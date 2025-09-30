@@ -53,19 +53,18 @@ const RestaurantFooter = () => {
               <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/5 border border-white/10">
                 <MapPin className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-white font-medium">288/L </p>
-                  <p className="text-gray-300">Rajagiriya</p>
+                  <p className="text-white font-medium">The Hungarian Center 288/12L </p>
+                  <p className="text-gray-300">Royal Gardens , Rajagiriya</p>
                 </div>
               </div>
               <div className="flex items-center space-x-3 p-3 rounded-lg bg-white/5 border border-white/10">
                 <Phone className="w-5 h-5 text-red-400" />
-                <p className="text-white font-medium">+94 1 234 5678</p>
+                <p className="text-white font-medium">+94 777 66 9191</p>
               </div>
               <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/5 border border-white/10">
                 <Clock className="w-5 h-5 text-red-400 mt-0.5" />
                 <div>
-                  <p className="text-white font-medium">Daily: 11:00 AM - 11:00 PM</p>
-                  <p className="text-gray-400 text-sm mt-1">Hétfő-Vasárnap</p>
+                  <p className="text-white font-medium">Daily: 9:00 AM - 9:00 PM</p>
                 </div>
               </div>
             </div>
@@ -84,12 +83,7 @@ const RestaurantFooter = () => {
                   Our Menu (Étlapunk)
                 </span>
               </a>
-              <a href="#about" className="block text-gray-300 hover:text-red-400 transition-smooth hover:translate-x-2 group">
-                <span className="flex items-center">
-                  <span className="w-2 h-2 bg-white/60 rounded-full mr-3 group-hover:bg-red-400 transition-colors"></span>
-                  About Us (Rólunk)
-                </span>
-              </a>
+
               <a href="#reservations" className="block text-gray-300 hover:text-red-400 transition-smooth hover:translate-x-2 group">
                 <span className="flex items-center">
                   <span className="w-2 h-2 bg-red-600 rounded-full mr-3 group-hover:bg-red-400 transition-colors"></span>
@@ -102,12 +96,7 @@ const RestaurantFooter = () => {
                   Private Events (Rendezvények)
                 </span>
               </a>
-              <a href="#contact" className="block text-gray-300 hover:text-red-400 transition-smooth hover:translate-x-2 group">
-                <span className="flex items-center">
-                  <span className="w-2 h-2 bg-red-600 rounded-full mr-3 group-hover:bg-red-400 transition-colors"></span>
-                  Contact (Kapcsolat)
-                </span>
-              </a>
+
             </div>
           </div>
 
@@ -120,15 +109,15 @@ const RestaurantFooter = () => {
             <div className="space-y-3">
               <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
                 <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse-gentle"></div>
-                <span className="text-gray-300">Authentic Goulash</span>
+                <span className="text-gray-300">Authentic </span>
               </div>
               <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
                 <div className="w-3 h-3 bg-white rounded-full"></div>
-                <span className="text-gray-300">Traditional Schnitzel</span>
+                <span className="text-gray-300">Traditional </span>
               </div>
               <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
                 <div className="w-3 h-3 bg-red-600 rounded-full"></div>
-                <span className="text-gray-300">Homemade Kürtőskalács</span>
+                <span className="text-gray-300">Homemade </span>
               </div>
               <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
                 <div className="w-3 h-3 bg-white rounded-full"></div>
@@ -153,14 +142,12 @@ const RestaurantFooter = () => {
             {/* Professional Copyright */}
             <div className="text-center md:text-left animate-fade-in-up">
               <p className="text-gray-400">
-                © 2025 Restaurants By Ronan Budapest. Minden jog fenntartva.
+                © 2025 Restaurants By Ronan 
               </p>
               <p className="text-gray-500 text-sm mt-1 flex items-center justify-center md:justify-start">
                 <span>Powered by Ronan Group</span>
                 <span className="mx-2">•</span>
-                <span className="flex items-center">
-                  Egészségére! <span className="ml-1 text-red-400">🇭🇺</span>
-                </span>
+
               </p>
             </div>
 

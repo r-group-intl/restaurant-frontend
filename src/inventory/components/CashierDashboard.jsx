@@ -347,7 +347,7 @@ const CashierDashboard = () => {
           <div class="header">
             <div class="restaurant-name">🍽️ RESTAURANTS BY RONAN</div>
             <div class="restaurant-info">📍 Your Restaurant Address</div>
-            <div class="restaurant-info">📞 +94 11 234 5678</div>
+            <div class="restaurant-info">📞 +94 777 66 9191</div>
             <div class="restaurant-info">✉️ info@wowrestaurant.com</div>
           </div>
           
