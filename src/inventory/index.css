@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Inventory-specific root styles */
+.inventory-app {
+  height: 100vh;
+  overflow: hidden;
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+@layer base {
+  .inventory-app {
+    @apply bg-slate-950 text-slate-100 antialiased;
+  }
+}
+
+@layer components {
+  /* Sidebar Components */
+  .inventory-sidebar {
+    @apply w-64 bg-slate-800 border-r border-slate-700 flex flex-col;
+    min-height: 100vh;
+    max-height: 100vh;
+  }
+  
+  .inventory-sidebar-nav {
+    @apply flex-1 overflow-y-auto;
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 #1f2937;
+  }
+  
+  .inventory-sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .inventory-sidebar-nav::-webkit-scrollbar-track {
+    background: #1f2937;
+  }
+  
+  .inventory-sidebar-nav::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 3px;
+  }
+  
+  .inventory-sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+  }
+  
+  /* Main Layout */
+  .inventory-main {
+    @apply flex-1 flex flex-col overflow-hidden;
+    min-width: 0; /* Prevents flex item from growing beyond container */
+  }
+  
+  .inventory-header {
+    @apply bg-slate-900 border-b border-slate-700 px-6 py-4 flex-shrink-0;
+  }
+  
+  .inventory-content {
+    @apply flex-1 overflow-auto p-6;
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 #0f172a;
+  }
+  
+  .inventory-content::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .inventory-content::-webkit-scrollbar-track {
+    background: #0f172a;
+  }
+  
+  .inventory-content::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 4px;
+  }
+  
+  .inventory-content::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+  }
+  
+  /* Card Components */
+  .inventory-card {
+    @apply bg-slate-900 rounded-lg border border-slate-800 shadow-sm;
+  }
+  
+  .inventory-card-header {
+    @apply px-4 py-3 border-b border-slate-800 flex items-center justify-between;
+  }
+  
+  .inventory-card-body {
+    @apply p-4;
+  }
+  
+  /* Button Components */
+  .btn-primary {
+    @apply bg-red-600 text-white px-4 py-2 rounded-lg font-medium;
+    @apply hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-900;
+    @apply transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply bg-slate-700 text-white px-4 py-2 rounded-lg font-medium;
+    @apply hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-900;
+    @apply transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  /* Form Components */
+  .form-input {
+    @apply w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white;
+    @apply placeholder-slate-400 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none;
+    @apply transition-colors duration-200;
+  }
+  
+  .form-select {
+    @apply w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white;
+    @apply focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none;
+    @apply transition-colors duration-200;
+  }
+  
+  .form-label {
+    @apply block text-sm font-medium text-slate-300 mb-2;
+  }
+  
+  /* Grid Components */
+  .stats-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+  
+  .form-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end;
+  }
+  
+  /* Table Components */
+  .table-container {
+    @apply overflow-x-auto rounded-lg border border-slate-800;
+  }
+  
+  .table-row {
+    @apply hover:bg-slate-800/50 transition-colors duration-150;
+  }
+  
+  /* Modal Components */
+  .modal-backdrop {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4;
+  }
+  
+  .modal-content {
+    @apply bg-slate-900 border border-slate-800 rounded-lg shadow-xl;
+    @apply w-full max-w-2xl max-h-[90vh] overflow-hidden;
+  }
+  
+  /* Responsive helpers */
+  .page-container {
+    @apply space-y-6 max-w-none;
+  }
+  
+  .page-header {
+    @apply flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4;
+  }
+  
+  .page-title {
+    @apply text-2xl font-bold text-white;
+  }
+}
+
