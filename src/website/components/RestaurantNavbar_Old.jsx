@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
-import { Menu, X, ShoppingCart, Phone, MapPin, ChevronDown, Users } from "lucide-react";
+import { Menu, X, ShoppingCart, Phone, MapPin, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableChange, isTableLocked = false }) => {
+const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, isTableLocked = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [showTableDropdown, setShowTableDropdown] = useState(false);
 
   const cartItemCount = cartItems.reduce((total, item) => total + (item.quantity || 1), 0);
-  const tableNumbers = Array.from({ length: 20 }, (_, i) => i + 1); // Tables 1-20
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,15 +21,6 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
   const scrollToSection = (sectionId) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
     setIsOpen(false);
-  };
-
-  const handleTableSelect = (tableNum) => {
-    if (!isTableLocked) {
-      onTableChange(tableNum);
-      setShowTableDropdown(false);
-    } else {
-      alert('🔒 Table is locked by QR code. You cannot change tables.');
-    }
   };
 
   return (

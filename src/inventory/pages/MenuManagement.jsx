@@ -10,13 +10,7 @@ import {
   formatUnit, 
   suggestUnitsForIngredient 
 } from '../utils/unitConversion';
-
-// Helper function to get full image URL
-const getImageUrl = (imagePath) => {
-  if (!imagePath) return null;
-  if (imagePath.startsWith('http')) return imagePath; // External URL
-  return imagePath; // Use relative path - Vite proxy will handle it
-};
+import { getImageUrl } from '../../utils/imageUtils';
 
 export default function MenuManagement() {
   const [menuItems, setMenuItems] = useState([]);
@@ -258,7 +252,19 @@ export default function MenuManagement() {
               alt={item.name} 
               className="w-10 h-10 rounded-lg object-cover"
               onError={(e) => {
+                console.error('Failed to load image:', {
+                  originalPath: item.image,
+                  generatedUrl: getImageUrl(item.image),
+                  itemName: item.name
+                });
                 e.target.style.display = 'none';
+              }}
+              onLoad={() => {
+                console.log('Image loaded successfully:', {
+                  originalPath: item.image,
+                  generatedUrl: getImageUrl(item.image),
+                  itemName: item.name
+                });
               }}
             />
           )}
@@ -532,7 +538,19 @@ export default function MenuManagement() {
                       alt="Dish preview" 
                       className="w-32 h-32 rounded-lg object-cover border-2 border-slate-600"
                       onError={(e) => {
+                        console.error('Failed to load preview image:', {
+                          previewUrl,
+                          originalPath: formData.image,
+                          generatedUrl: getImageUrl(formData.image)
+                        });
                         e.target.style.display = 'none';
+                      }}
+                      onLoad={() => {
+                        console.log('Preview image loaded successfully:', {
+                          previewUrl,
+                          originalPath: formData.image,
+                          generatedUrl: getImageUrl(formData.image)
+                        });
                       }}
                     />
                     <button

@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import api from "../../inventory/services/api";
-
-// Helper function to get full image URL
-const getImageUrl = (imagePath) => {
-  if (!imagePath) return '/placeholder.svg';
-  if (imagePath.startsWith('http')) return imagePath; // External URL
-  return imagePath; // Use relative path - Vite proxy will handle it
-};
+import { getImageUrlWithFallback } from "../../utils/imageUtils";
 
 // Static fallback data in case API fails
 const fallbackMenuItems = [
@@ -381,7 +375,7 @@ const MenuSection = ({ onAddToCart }) => {
           description: item.description || '',
           price: item.sellPrice || 0, // Use sellPrice as the display price
           costPrice: item.totalCost || 0, // Keep cost price for reference
-          image: getImageUrl(item.image),
+          image: getImageUrlWithFallback(item.image),
           category: item.category || 'Other',
           portionSize: item.portionSize,
           servings: item.servings,
