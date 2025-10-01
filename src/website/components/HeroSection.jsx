@@ -16,7 +16,7 @@ const HeroSection = ({ onViewMenu, tableNumber, onReserveTable }) => {
   const [currentImage, setCurrentImage] = useState(0);
 
   // ✅ Put all hero images into array
-  const images = [BG];
+  const images = [BG]; 
 
   // Background image rotation
   useEffect(() => {
