@@ -4,6 +4,12 @@ import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import { PlusIcon, PencilSquareIcon, TrashIcon, CurrencyDollarIcon, ArrowPathIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { 
+  calculateConvertedCost, 
+  getCompatibleUnits, 
+  formatUnit, 
+  suggestUnitsForIngredient 
+} from '../utils/unitConversion';
 
 // Helper function to get full image URL
 const getImageUrl = (imagePath) => {
@@ -101,7 +107,8 @@ export default function MenuManagement() {
       servings: item.servings,
       ingredients: item.ingredients.map(ing => ({
         itemId: ing.itemId._id || ing.itemId,
-        quantity: ing.quantity
+        quantity: ing.quantity,
+        recipeUnit: ing.unit || '' // Use stored unit or default to empty
       })),
       image: item.image || '',
       category: item.category || 'Other',
@@ -153,7 +160,11 @@ export default function MenuManagement() {
   const addIngredient = () => {
     setFormData({
       ...formData,
-      ingredients: [...formData.ingredients, { itemId: '', quantity: 0 }]
+      ingredients: [...formData.ingredients, { 
+        itemId: '', 
+        quantity: 0, 
+        recipeUnit: '' // Unit used in the recipe (different from stock unit)
+      }]
     });
   };
 
@@ -574,49 +585,136 @@ export default function MenuManagement() {
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {formData.ingredients.map((ingredient, index) => {
                   const selectedItem = items.find(item => item._id === ingredient.itemId);
-                  const totalCost = selectedItem ? (ingredient.quantity * selectedItem.price) : 0;
+                  
+                  // Calculate cost with unit conversion
+                  let costInfo = {
+                    success: false,
+                    totalCost: 0,
+                    convertedQuantity: 0,
+                    unitCost: 0,
+                    error: null
+                  };
+                  
+                  if (selectedItem && ingredient.quantity > 0 && ingredient.recipeUnit) {
+                    costInfo = calculateConvertedCost(
+                      ingredient.quantity,
+                      ingredient.recipeUnit,
+                      1, // Stock quantity is 1 unit
+                      selectedItem.unit,
+                      selectedItem.price
+                    );
+                  }
+                  
+                  // Get compatible units for the selected item
+                  const compatibleUnits = selectedItem ? getCompatibleUnits(selectedItem.unit) : [];
                   
                   return (
-                    <div key={index} className="flex items-center space-x-3 p-3 bg-slate-800 rounded">
-                      <div className="flex-1">
-                        <select
-                          required
-                          className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
-                          value={ingredient.itemId}
-                          onChange={(e) => updateIngredient(index, 'itemId', e.target.value)}
+                    <div key={index} className="p-3 bg-slate-800 rounded space-y-3">
+                      {/* Ingredient Selection Row */}
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-1">
+                          <select
+                            required
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
+                            value={ingredient.itemId}
+                            onChange={(e) => {
+                              updateIngredient(index, 'itemId', e.target.value);
+                              // Auto-suggest compatible unit when ingredient is selected
+                              const newItem = items.find(item => item._id === e.target.value);
+                              if (newItem && !ingredient.recipeUnit) {
+                                const suggestions = suggestUnitsForIngredient(newItem.name);
+                                const compatibleWithStock = getCompatibleUnits(newItem.unit);
+                                const suggestedUnit = suggestions.find(unit => 
+                                  compatibleWithStock.includes(unit.toLowerCase())
+                                ) || newItem.unit;
+                                updateIngredient(index, 'recipeUnit', suggestedUnit);
+                              }
+                            }}
+                          >
+                            <option value="">Select ingredient...</option>
+                            {items.map(item => (
+                              <option key={item._id} value={item._id}>
+                                {item.name} ({formatUnit(item.unit)}) - LKR {item.price}/{formatUnit(item.unit)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeIngredient(index)}
+                          className="p-1 text-red-400 hover:text-red-300"
                         >
-                          <option value="">Select ingredient...</option>
-                          {items.map(item => (
-                            <option key={item._id} value={item._id}>
-                              {item.name} ({item.unit}) - LKR {item.price}
-                            </option>
-                          ))}
-                        </select>
+                          <TrashIcon className="w-4 h-4" />
+                        </button>
                       </div>
-                      <div className="w-32">
-                        <input
-                          type="number"
-                          required
-                          min="0.1"
-                          step="0.1"
-                          className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
-                          placeholder="Quantity"
-                          value={ingredient.quantity}
-                          onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
+                      
+                      {/* Quantity and Unit Row */}
                       {selectedItem && (
-                        <div className="w-24 text-sm text-slate-300 text-center">
-                          LKR {totalCost.toFixed(2)}
+                        <div className="flex items-center space-x-3">
+                          <div className="w-32">
+                            <input
+                              type="number"
+                              required
+                              min="0.001"
+                              step="0.001"
+                              className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white"
+                              placeholder="Quantity"
+                              value={ingredient.quantity}
+                              onChange={(e) => updateIngredient(index, 'quantity', parseFloat(e.target.value) || 0)}
+                            />
+                          </div>
+                          <div className="w-24">
+                            <select
+                              required
+                              className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-2 text-white text-sm"
+                              value={ingredient.recipeUnit}
+                              onChange={(e) => updateIngredient(index, 'recipeUnit', e.target.value)}
+                            >
+                              <option value="">Unit</option>
+                              {compatibleUnits.map(unit => (
+                                <option key={unit} value={unit}>
+                                  {formatUnit(unit)}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          
+                          {/* Cost Display */}
+                          <div className="flex-1 text-sm">
+                            {costInfo.success ? (
+                              <div className="text-slate-300">
+                                <div className="font-medium text-green-400">
+                                  LKR {costInfo.totalCost.toFixed(2)}
+                                </div>
+                                {ingredient.recipeUnit !== selectedItem.unit && (
+                                  <div className="text-xs text-slate-400">
+                                    = {costInfo.convertedQuantity.toFixed(3)} {formatUnit(selectedItem.unit)}
+                                  </div>
+                                )}
+                              </div>
+                            ) : costInfo.error ? (
+                              <div className="text-red-400 text-xs">
+                                {costInfo.error}
+                              </div>
+                            ) : ingredient.quantity > 0 && ingredient.recipeUnit ? (
+                              <div className="text-yellow-400 text-xs">
+                                Calculating...
+                              </div>
+                            ) : (
+                              <div className="text-slate-500 text-xs">
+                                Enter quantity & unit
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => removeIngredient(index)}
-                        className="p-1 text-red-400 hover:text-red-300"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
+                      
+                      {/* Stock Info */}
+                      {selectedItem && (
+                        <div className="text-xs text-slate-400 bg-slate-700 px-2 py-1 rounded">
+                          Stock: {selectedItem.quantity} {formatUnit(selectedItem.unit)} @ LKR {selectedItem.price}/{formatUnit(selectedItem.unit)}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -631,7 +729,15 @@ export default function MenuManagement() {
                   <span className="text-xl font-bold text-primary">
                     LKR {formData.ingredients.reduce((sum, ing) => {
                       const item = items.find(item => item._id === ing.itemId);
-                      return sum + (item ? ((Number(ing.quantity) || 0) * (Number(item.price) || 0)) : 0);
+                      if (!item || !ing.quantity || !ing.recipeUnit) return sum;
+                      const costInfo = calculateConvertedCost(
+                        ing.quantity,
+                        ing.recipeUnit,
+                        1,
+                        item.unit,
+                        item.price
+                      );
+                      return sum + (costInfo.success ? costInfo.totalCost : 0);
                     }, 0).toFixed(2)}
                   </span>
                 </div>
@@ -641,7 +747,15 @@ export default function MenuManagement() {
                     <span className="text-primary font-medium">
                       LKR {(formData.ingredients.reduce((sum, ing) => {
                         const item = items.find(item => item._id === ing.itemId);
-                        return sum + (item ? ((Number(ing.quantity) || 0) * (Number(item.price) || 0)) : 0);
+                        if (!item || !ing.quantity || !ing.recipeUnit) return sum;
+                        const costInfo = calculateConvertedCost(
+                          ing.quantity,
+                          ing.recipeUnit,
+                          1,
+                          item.unit,
+                          item.price
+                        );
+                        return sum + (costInfo.success ? costInfo.totalCost : 0);
                       }, 0) / Math.max(1, Number(formData.servings) || 1)).toFixed(2)}
                     </span>
                   </div>
@@ -659,12 +773,28 @@ export default function MenuManagement() {
                       <span className={`text-lg font-bold ${
                         (formData.sellPrice - formData.ingredients.reduce((sum, ing) => {
                           const item = items.find(item => item._id === ing.itemId);
-                          return sum + (item ? (ing.quantity * item.price) : 0);
+                          if (!item || !ing.quantity || !ing.recipeUnit) return sum;
+                          const costInfo = calculateConvertedCost(
+                            ing.quantity,
+                            ing.recipeUnit,
+                            1,
+                            item.unit,
+                            item.price
+                          );
+                          return sum + (costInfo.success ? costInfo.totalCost : 0);
                         }, 0)) >= 0 ? 'text-green-400' : 'text-red-400'
                       }`}>
                         LKR {(formData.sellPrice - formData.ingredients.reduce((sum, ing) => {
                           const item = items.find(item => item._id === ing.itemId);
-                          return sum + (item ? (ing.quantity * item.price) : 0);
+                          if (!item || !ing.quantity || !ing.recipeUnit) return sum;
+                          const costInfo = calculateConvertedCost(
+                            ing.quantity,
+                            ing.recipeUnit,
+                            1,
+                            item.unit,
+                            item.price
+                          );
+                          return sum + (costInfo.success ? costInfo.totalCost : 0);
                         }, 0)).toFixed(2)}
                       </span>
                     </div>
