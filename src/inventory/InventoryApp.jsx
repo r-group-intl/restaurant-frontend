@@ -14,7 +14,6 @@ import SupplierPayments from './pages/SupplierPayments';
 import Transactions from './pages/Transactions';
 import Staff from './pages/Staff';
 import Usage from './pages/Usage';
-import ImageDebug from '../components/ImageDebug';
 import MenuManagement from './pages/MenuManagement';
 import OldKitchenDashboard from './pages/KitchenDashboard';
 import MenuAnalytics from './pages/MenuAnalytics';
@@ -109,8 +108,6 @@ function InventoryApp() {
         />
         <Route path="*" element={<div className="p-6">Not Found</div>} />
       </Routes>
-      {/* Temporary debug component */}
-      {import.meta.env.DEV && <ImageDebug />}
     </DomainProvider>
   );
 }

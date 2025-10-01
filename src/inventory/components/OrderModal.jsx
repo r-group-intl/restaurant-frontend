@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle } from 'lucide-react';
 import { api } from '../../lib/api';
 import { toast } from 'react-hot-toast';
+import { getImageUrl } from '../../utils/imageUtils';
 
 const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'table', tableNumber = null }) => {
   const [selectedItems, setSelectedItems] = useState([]);
@@ -206,7 +207,7 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
                   {item.image && (
                     <div className="w-full h-20 bg-slate-700 rounded overflow-hidden">
                       <img
-                        src={item.image.startsWith('/uploads/') ? `http://localhost:4000${item.image}` : `http://localhost:4000/uploads/menu-items/${item.image}`}
+                        src={getImageUrl(item.image)}
                         alt={item.name}
                         className="w-full h-full object-cover"
                         onError={(e) => {
