@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, AlertTriangle, CheckCircle } from 'lucide-react';
+import { X, AlertTriangle, CheckCircle, MessageSquare } from 'lucide-react';
 import { api } from '../../lib/api';
 import { toast } from 'react-hot-toast';
 import { getImageUrl } from '../../utils/imageUtils';
@@ -11,6 +11,7 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
   const [inventoryCheck, setInventoryCheck] = useState(null);
   const [checkingInventory, setCheckingInventory] = useState(false);
   const [showInventoryDetails, setShowInventoryDetails] = useState(false);
+  const [customerNotes, setCustomerNotes] = useState('');
 
   const categories = ['all', 'Main Dish', 'Beverage', 'Dessert', 'Side Dish', 'Other'];
   
@@ -106,17 +107,22 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
       return;
     }
 
-    onSubmit(selectedItems);
+    onSubmit(selectedItems, customerNotes);
     setSelectedItems([]);
     setSearchTerm('');
     setSelectedCategory('all');
     setInventoryCheck(null);
     setShowInventoryDetails(false);
+    setCustomerNotes('');
   };
 
   const resetForm = () => {
     setSelectedItems([]);
     setSearchTerm('');
+    setSelectedCategory('all');
+    setInventoryCheck(null);
+    setShowInventoryDetails(false);
+    setCustomerNotes('');
     setSelectedCategory('all');
     setInventoryCheck(null);
     setShowInventoryDetails(false);
@@ -139,9 +145,9 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
             <h2 className="text-2xl font-bold text-white">New Order</h2>
             <p className="text-slate-400 text-sm mt-1">
               {orderType === 'takeaway' ? (
-                <span className="text-orange-400">📦 Takeaway Order</span>
+                <span className="text-orange-400">Takeaway Order</span>
               ) : (
-                <span className="text-blue-400">🪑 Table {tableNumber} Order</span>
+                <span className="text-blue-400">Table {tableNumber} Order</span>
               )}
             </p>
           </div>
@@ -352,6 +358,26 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
                   <div className="flex justify-between items-center text-lg font-bold text-white">
                     <span>Total:</span>
                     <span className="text-green-400">LKR {getTotalAmount().toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* Customer Notes */}
+                <div className="mb-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-400/20 rounded-lg p-4">
+                  <label className="flex items-center text-sm font-medium text-blue-300 mb-2">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Special Requests for Kitchen (Optional)
+                  </label>
+                  <textarea
+                    value={customerNotes}
+                    onChange={(e) => setCustomerNotes(e.target.value)}
+                    placeholder="Any special requests? (e.g., no onions, extra spicy, less salt, allergies, etc.)"
+                    className="w-full px-3 py-2 rounded border border-slate-600 bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    rows="3"
+                    maxLength="500"
+                  />
+                  <div className="flex justify-between items-center text-xs mt-2">
+                    <span className="text-slate-400">💡 Kitchen staff will see these notes</span>
+                    <span className="text-slate-400">{customerNotes.length}/500 characters</span>
                   </div>
                 </div>
 

@@ -103,12 +103,13 @@ const CashierDashboard = () => {
     toast.success(`Viewing ${orders.length} takeaway order(s)`);
   };
 
-  const handlePlaceOrder = async (selectedItems) => {
+  const handlePlaceOrder = async (selectedItems, customerNotes = '') => {
     try {
       const orderData = {
         orderType,
         items: selectedItems,
-        placedBy: 'cashier'
+        placedBy: 'cashier',
+        customerNotes: customerNotes || ''
       };
 
       // Only include table for table orders

@@ -67,6 +67,20 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
         ))}
       </div>
 
+      {/* Customer Notes */}
+      {order.customerNotes && order.customerNotes.trim() && (
+        <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-400/30 rounded-lg p-3 mb-3 shadow-lg">
+          <div className="flex items-center space-x-2 mb-2">
+            <div className="bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded uppercase tracking-wide">
+              🍽️ Customer Request
+            </div>
+          </div>
+          <p className="text-yellow-50 text-sm font-medium italic bg-black/20 p-2 rounded">
+            "{order.customerNotes}"
+          </p>
+        </div>
+      )}
+
       {/* Total */}
       <div className="border-t border-slate-600 pt-2 mb-3">
         <div className="flex justify-between items-center font-semibold text-white">

@@ -106,12 +106,13 @@ const WaiterDashboard = () => {
     setIsOrderModalOpen(true);
   };
 
-  const handlePlaceOrder = async (selectedItems) => {
+  const handlePlaceOrder = async (selectedItems, customerNotes = '') => {
     try {
       const orderData = {
         orderType: 'takeaway',
         items: selectedItems,
-        placedBy: 'waiter'
+        placedBy: 'waiter',
+        customerNotes: customerNotes || ''
       };
 
       await api.post('/orders', orderData);
