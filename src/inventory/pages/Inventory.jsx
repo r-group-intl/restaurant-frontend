@@ -9,6 +9,10 @@ import { ShoppingCart, Edit, Trash2 } from "lucide-react";
 export default function Inventory() {
   const { domain } = useDomain();
   const [items, setItems] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [stockFilter, setStockFilter] = useState('all'); // all, low-stock, in-stock
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [showItemModal, setShowItemModal] = useState(false);
@@ -57,6 +61,34 @@ export default function Inventory() {
   useEffect(() => {
     loadData();
   }, [domain]);
+
+  // Filter items based on search term, category, and stock status
+  useEffect(() => {
+    let filtered = items;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(item =>
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.unit.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(item => item.categoryId === categoryFilter);
+    }
+
+    // Stock filter
+    if (stockFilter === 'low-stock') {
+      filtered = filtered.filter(item => item.quantity <= (item.reorderLevel || 0));
+    } else if (stockFilter === 'in-stock') {
+      filtered = filtered.filter(item => item.quantity > (item.reorderLevel || 0));
+    }
+
+    setFilteredItems(filtered);
+  }, [items, searchTerm, categoryFilter, stockFilter]);
 
   const handleItemSubmit = async (e) => {
     e.preventDefault();
@@ -272,6 +304,60 @@ export default function Inventory() {
         </Card>
       </div>
 
+      {/* Search and Filters */}
+      <Card title="Search & Filters">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Search Bar */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Search Items</label>
+            <input
+              type="text"
+              placeholder="Search by name, description, or unit..."
+              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white placeholder-slate-400"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          {/* Category Filter */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Category</label>
+            <select
+              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="all">All Categories</option>
+              {categories.map(category => (
+                <option key={category._id} value={category._id}>{category.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Stock Status Filter */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Stock Status</label>
+            <select
+              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white"
+              value={stockFilter}
+              onChange={(e) => setStockFilter(e.target.value)}
+            >
+              <option value="all">All Items</option>
+              <option value="in-stock">In Stock</option>
+              <option value="low-stock">Low Stock</option>
+            </select>
+          </div>
+        </div>
+        
+        {/* Results Summary */}
+        <div className="mt-4 text-sm text-slate-400">
+          Showing {filteredItems.length} of {items.length} items
+          {searchTerm && (
+            <span> matching "{searchTerm}"</span>
+          )}
+        </div>
+      </Card>
+
       {/* Low Stock Alerts */}
       {lowStockItems.length > 0 && (
         <Card title="⚠️ Low Stock Alerts">
@@ -298,7 +384,7 @@ export default function Inventory() {
 
       {/* Items Table */}
       <Card title="Inventory Items">
-        <Table data={items} columns={columns} />
+        <Table data={filteredItems} columns={columns} />
       </Card>
 
       {/* Add/Edit Item Modal */}
