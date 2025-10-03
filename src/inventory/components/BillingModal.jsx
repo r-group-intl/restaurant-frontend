@@ -93,15 +93,8 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
 
   const printBill = (orderData) => {
     const currentDate = new Date();
-    const billDate = currentDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    const billTime = currentDate.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+
+
 
     const billHTML = `
       <!DOCTYPE html>
@@ -248,14 +241,14 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
             <div class="restaurant-name">🍽️ RESTAURANTS BY RONAN</div>
             <div class="restaurant-info">📍 Your Restaurant Address</div>
             <div class="restaurant-info">📞 +94 777 66 9191</div>
-            <div class="restaurant-info">✉️ info@wowrestaurant.com</div>
+         
           </div>
           
           <div class="bill-info">
             <div>
               <strong>Bill No:</strong> ${orderData.orderId}<br>
-              <strong>Table:</strong> ${orderData.table === 'takeaway' || !orderData.table ? '🥡 Takeaway' : `🪑 Table ${orderData.table}`}<br>
-              <strong>Order Type:</strong> ${orderData.placedBy === 'customer' ? '👤 Customer' : `👨‍💼 ${orderData.placedBy}`}
+              <strong>Table:</strong> ${orderData.table === 'takeaway' || !orderData.table ? ' Takeaway' : `Table ${orderData.table}`}<br>
+              <strong>Order Type:</strong> ${orderData.placedBy === 'customer' ? ' Customer' : ` ${orderData.placedBy}`}
             </div>
             <div style="text-align: right;">
               <strong>Date:</strong> ${billDate}<br>
@@ -267,6 +260,7 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
           <div class="items-header">
             <span>Item</span>
             <span>Qty</span>
+            <span>Unit Price</span>
             <span>Amount</span>
           </div>
           
@@ -274,6 +268,7 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
             <div class="item-row">
               <span class="item-name">${item.dishName}</span>
               <span class="item-qty">${item.qty}</span>
+              <span class="item-unit">${item.price}</span>
               <span class="item-price">LKR ${(item.price * item.qty).toFixed(2)}</span>
             </div>
           `).join('')}
@@ -319,9 +314,7 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
           </div>
           
           <div class="footer">
-            <div style="margin-bottom: 10px;">
-              <strong>🙏 Thank you for dining with us!</strong>
-            </div>
+
             <div style="margin-bottom: 10px;">
               ⭐ Rate your experience: www.wowrestaurant.com/feedback
             </div>

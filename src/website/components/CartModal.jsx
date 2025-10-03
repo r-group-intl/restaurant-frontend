@@ -208,7 +208,7 @@ const CartModal = ({ isOpen, onClose, cartItems, tableNumber, onUpdateQuantity, 
               <Button
                 variant="outline"
                 onClick={onClose}
-                className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50 text-sm py-2"
+                className="flex-1 border-gray-300 text-white hover:bg-gray-500 text-sm py-2"
               >
                 Add More
               </Button>

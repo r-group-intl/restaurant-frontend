@@ -465,11 +465,19 @@ export default function MenuManagement() {
                 value={formData.category}
                 onChange={(e) => setFormData({...formData, category: e.target.value})}
               >
+                <option value="All">All</option>
                 <option value="Main Dish">Main Dish</option>
                 <option value="Beverage">Beverage</option>
                 <option value="Dessert">Dessert</option>
                 <option value="Side Dish">Side Dish</option>
                 <option value="Other">Other</option>
+                <option value="Soups">Soups</option>
+                <option value="Bakery">Bakery</option>
+                <option value="Salads">Salads</option>
+                <optgroup label="Pancakes">
+                  <option value="Pancakes - Savory">Pancakes - Savory</option>
+                  <option value="Pancakes - Sweets">Pancakes - Sweets</option>
+                </optgroup>
               </select>
             </div>
             <div>
