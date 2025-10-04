@@ -24,6 +24,7 @@ export default function MenuManagement() {
   
   const [formData, setFormData] = useState({
     name: '',
+    subname: '',
     description: '',
     portionSize: '',
     servings: 1,
@@ -96,6 +97,7 @@ export default function MenuManagement() {
     setEditingItem(item);
     setFormData({
       name: item.name,
+      subname: item.subname || '',
       description: item.description || '',
       portionSize: item.portionSize,
       servings: item.servings,
@@ -135,6 +137,7 @@ export default function MenuManagement() {
   const resetForm = () => {
     setFormData({
       name: '',
+      subname: '',
       description: '',
       portionSize: '',
       servings: 1,
@@ -270,6 +273,9 @@ export default function MenuManagement() {
           )}
           <div>
             <div className="font-medium text-white">{item.name}</div>
+            {item.subname && (
+              <div className="text-sm text-orange-400 font-medium">{item.subname}</div>
+            )}
             <div className="text-sm text-slate-400">{item.category}</div>
           </div>
         </div>
@@ -420,6 +426,19 @@ export default function MenuManagement() {
               />
             </div>
             <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Sub Name (Optional)</label>
+              <input
+                type="text"
+                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white"
+                value={formData.subname}
+                onChange={(e) => setFormData({...formData, subname: e.target.value})}
+                placeholder="e.g., Traditional Style, Spicy Version"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Portion Size</label>
               <input
                 type="text"
@@ -430,9 +449,6 @@ export default function MenuManagement() {
                 placeholder="e.g., 1 person, 3 persons, family size"
               />
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">Number of Servings</label>
               <input
@@ -444,16 +460,17 @@ export default function MenuManagement() {
                 onChange={(e) => setFormData({...formData, servings: parseInt(e.target.value) || 1})}
               />
             </div>
-            <div className="md:col-span-1">
-              <label className="block text-sm font-medium text-slate-300 mb-2">Description (Optional)</label>
-              <textarea
-                rows="2"
-                className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="Brief description of the dish..."
-              />
-            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Description (Optional)</label>
+            <textarea
+              rows="2"
+              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white"
+              value={formData.description}
+              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              placeholder="Brief description of the dish..."
+            />
           </div>
 
           {/* New Enhanced Fields */}

@@ -8,7 +8,7 @@ import { getImageUrlWithFallback } from "../../utils/imageUtils";
 
 // Static fallback data in case API fails
 const fallbackMenuItems = [
-  {
+  { 
     id: "1",
     name: "Sunflower Rye Sourdough Black Bread",
     description: "Sunflower Rye Sourdough, cherished in Germany and Scandinavia, blends rye flour with sunflower seeds, creating a nutty, dense, and moist loaf.",
@@ -122,6 +122,7 @@ const MenuSection = ({ onAddToCart }) => {
         const items = response.data.map(item => ({
           id: item._id,
           name: item.name,
+          subname: item.subname || '', // Add subname support
           description: item.description || '',
           price: item.sellPrice || 0, // Use sellPrice as the display price
           costPrice: item.totalCost || 0, // Keep cost price for reference
@@ -345,10 +346,17 @@ const MenuSection = ({ onAddToCart }) => {
               {/* Professional Dark Content */}
               <div className="p-6 bg-neutral-900 rounded-b-2xl border-x border-b border-gray-00">
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-xl font text-white group-hover:text-red-400 transition-smooth">
-                    {item.name}
-                  </h3>
-                  <p className="text-xl font-bold text-white">
+                  <div className="flex-1">
+                    <h3 className="text-xl font text-white group-hover:text-red-400 transition-smooth">
+                      {item.name}
+                    </h3>
+                    {item.subname && (
+                      <p className="text-sm font-medium text-blue-400 mt-1 italic">
+                        {item.subname}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-xl font-bold text-white ml-4">
                     Rs. {item.price}
                   </p>
                 </div>
@@ -440,6 +448,9 @@ const MenuSection = ({ onAddToCart }) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-2xl font-bold text-white mb-2">{selectedImage.name}</h3>
+                    {selectedImage.subname && (
+                      <p className="text-lg font-medium text-blue-400 mb-2 italic">{selectedImage.subname}</p>
+                    )}
                     <p className="text-gray-300 text-sm max-w-2xl">{selectedImage.description}</p>
                   </div>
                   <div className="text-right">
