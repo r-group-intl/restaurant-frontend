@@ -130,7 +130,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
 
             <div className="flex items-center space-x-1 text-sm text-gray-400 transition-smooth">
               <Phone className="w-4 h-4" />
-              <span>+94 563 123 456</span>
+              <span>+94 777 66 9191</span>
             </div>
           </div>
 
