@@ -167,10 +167,20 @@ const MenuSection = ({ onAddToCart }) => {
     return categoryMap[category] || category;
   };
 
-  const categories = ["All", "Mains", "Soups", "Salads", "Beverages",  "Bakery", "Pancakes - Savory", "Pancakes - Sweets"];
+  const categories = ["All", "Salads", "Soups", "Mains", "Pancakes - Savory", "Pancakes - Sweets", "Bakery", "Beverages"];
+  
+  // Define the order for displaying items when "All" is selected
+  const categoryOrder = ["Salads", "Soups", "Mains", "Pancakes - Savory", "Pancakes - Sweets", "Bakery", "Beverages"];
   
   const filteredItems = selectedCategory === "All" 
-    ? menuItems 
+    ? menuItems.sort((a, b) => {
+        const indexA = categoryOrder.indexOf(a.categoryDisplay);
+        const indexB = categoryOrder.indexOf(b.categoryDisplay);
+        // If category not found in order, put it at the end
+        const orderA = indexA === -1 ? categoryOrder.length : indexA;
+        const orderB = indexB === -1 ? categoryOrder.length : indexB;
+        return orderA - orderB;
+      })
     : menuItems.filter(item => item.categoryDisplay === selectedCategory);
 
   const handleAddToCart = async (item) => {

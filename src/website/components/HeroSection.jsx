@@ -11,6 +11,8 @@ const hero2 = "/hero/hero2.png";
 const hero3 = "/hero/hero3.png";
 const hero4 = "/hero/hero4.png";
 const BG = "/hero/BG_2.png";
+const flower = "/hero/flower.png";
+const flower2 = "/hero/flower2.png";
 
 const HeroSection = ({ onViewMenu, tableNumber, onReserveTable }) => {
   const [currentImage, setCurrentImage] = useState(0);
@@ -35,7 +37,7 @@ const HeroSection = ({ onViewMenu, tableNumber, onReserveTable }) => {
     {
       image: hero1,
 
-      link: "https://www.instagram.com/wow.restaurant",
+      link: "https://www.instagram.com/",
     },
     {
       image: hero2,
@@ -45,7 +47,7 @@ const HeroSection = ({ onViewMenu, tableNumber, onReserveTable }) => {
     {
       image: hero3,
   
-      link: "https://www.tiktok.com/@wowrestaurant",
+      link: "https://www.tiktok.com/",
     },
     {
       image: hero4,
@@ -75,19 +77,28 @@ const HeroSection = ({ onViewMenu, tableNumber, onReserveTable }) => {
       <div className="relative z-10 container mx-auto px-12 text-center text-white">
         <div className="max-w-5xl mx-auto space-y-8">
           {/* Badge */}
-          <div className="animate-fade-in-up">
+<img
+  src={flower2}
+  alt="Flower"
+  className="w-full max-w-[25rem] sm:max-w-[25rem] md:max-w-[25rem] h-auto object-contain mx-auto mb-4"
+/>
 
-          </div>
+{/* Brand */}
+<div className="animate-slide-in-left space-y-2 sm:space-y-3">
+  <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold leading-tight tracking-tight mb-2">
+    <span className="text-white drop-shadow-2xl">Restaurants</span>
+    <br />
+    <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-red-500 to-red-400 drop-shadow-2xl">
+      By Ronan
+    </span>
+  </h1>
 
-          {/* Brand */}
-          <div className="animate-slide-in-left space-y-4 sm:space-y-6">
-            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold leading-tight tracking-tight">
-              <span className="text-white drop-shadow-2xl">                Restaurants </span>
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-red-500 to-red-400 drop-shadow-2xl">
-                By Ronan
-              </span>
-            </h1>
+  <img
+    src={flower}
+    alt="Flower"
+    className="w-full max-w-[25rem] sm:max-w-[25rem] md:max-w-[25rem] h-auto object-contain mx-auto mt-2"
+  />
+
             <p className="text-xs sm:text-sm md:text-base text-gray-300 max-w-xl sm:max-w-2xl mx-auto text-center leading-relaxed font-light py-1">
               Experience the rich flavors of Hungary with our traditional dishes,
               crafted with authentic recipes passed down through generations.
