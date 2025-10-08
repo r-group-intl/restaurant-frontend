@@ -93,8 +93,8 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
 
   const printBill = (orderData) => {
     const currentDate = new Date();
-
-
+    const billDate = currentDate.toLocaleDateString('en-GB');
+    const billTime = currentDate.toLocaleTimeString('en-GB', { hour12: false });
 
     const billHTML = `
       <!DOCTYPE html>
