@@ -21,6 +21,8 @@ import CashierDashboard from './components/CashierDashboard';
 import NewKitchenDashboard from './components/KitchenDashboard';
 import WaiterDashboard from './components/WaiterDashboard';
 import OrderAnalytics from './components/OrderAnalytics';
+import WastageManagement from './components/WastageManagement';
+import OutOfStockManagement from './components/OutOfStockManagement';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
 import { withRoleProtection } from './utils/roleProtection.jsx';
 
@@ -42,6 +44,10 @@ const ProtectedCashierDashboard = withRoleProtection(CashierDashboard, ['admin',
 const ProtectedKitchenOrderDashboard = withRoleProtection(NewKitchenDashboard, ['admin', 'kitchen']);
 const ProtectedWaiterDashboard = withRoleProtection(WaiterDashboard, ['admin', 'waiter']);
 const ProtectedOrderAnalytics = withRoleProtection(OrderAnalytics, ['admin']);
+
+// New Wastage and Stock Management
+const ProtectedWastageManagement = withRoleProtection(WastageManagement, ['admin', 'cashier']);
+const ProtectedOutOfStockManagement = withRoleProtection(OutOfStockManagement, ['admin', 'cashier']);
 
 function InventoryApp() {
   const isAuthed = Boolean(localStorage.getItem('token'));
@@ -99,6 +105,10 @@ function InventoryApp() {
                   <Route path="kitchen-orders" element={<ProtectedKitchenOrderDashboard />} />
                   <Route path="waiter-dashboard" element={<ProtectedWaiterDashboard />} />
                   <Route path="order-analytics" element={<ProtectedOrderAnalytics />} />
+                  
+                  {/* New Wastage and Stock Management */}
+                  <Route path="wastage-management" element={<ProtectedWastageManagement />} />
+                  <Route path="out-of-stock" element={<ProtectedOutOfStockManagement />} />
                 </Routes>
               </Layout>
             ) : (

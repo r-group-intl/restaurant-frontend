@@ -44,6 +44,11 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Add domain header - get from localStorage or default to restaurant
+  const domain = localStorage.getItem('domain') || 'restaurant';
+  config.headers['x-domain'] = domain;
+  
   return config;
 });
 

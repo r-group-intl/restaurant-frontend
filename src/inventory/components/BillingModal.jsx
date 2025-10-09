@@ -32,7 +32,7 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
   // Update amount paid when final amount changes
   useEffect(() => {
     if (paymentMethod === 'card' || paymentMethod === 'mobile') {
-      setAmountPaid(finalAmount); // Exact amount for card/mobile payments
+      setAmountPaid(finalAmount);
     }
   }, [finalAmount, paymentMethod]);
 
@@ -41,7 +41,6 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
     
     if (!order) return;
 
-    // Validation
     if (amountPaid < finalAmount && paymentMethod === 'cash') {
       toast.error('Amount paid cannot be less than final amount for cash payments');
       return;
@@ -59,17 +58,9 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
 
       await api.patch(`/orders/${order._id}/bill`, billData);
       
-      toast.success('Order billed successfully!', {
-        icon: '💰',
-        style: {
-          borderRadius: '10px',
-          background: '#1f2937',
-          color: '#fff',
-        },
-      });
+      toast.success('Order billed successfully!');
 
-      // Trigger bill printing
-      printBill({
+      await printBillToFile({
         ...order,
         discount: parseFloat(discount) || 0,
         discountType,
@@ -91,10 +82,33 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
     }
   };
 
-  const printBill = (orderData) => {
+  const printBillToFile = async (orderData) => {
+    try {
+      const response = await api.post('/print/bill', {
+        orderData,
+        options: {
+          method: 'powershell',
+          lineWidth: 40,
+          autoDelete: true
+        }
+      });
+
+      if (response.data.success) {
+        toast.success('Bill printed successfully!');
+      } else {
+        throw new Error(response.data.message || 'Print failed');
+      }
+    } catch (error) {
+      console.error('Print error:', error);
+      toast.error('Backend printing failed, opening browser print dialog...');
+      printBillBrowser(orderData);
+    }
+  };
+
+  const printBillBrowser = (orderData) => {
     const currentDate = new Date();
-
-
+    const billDate = currentDate.toLocaleDateString('en-GB');
+    const billTime = currentDate.toLocaleTimeString('en-GB', { hour12: false });
 
     const billHTML = `
       <!DOCTYPE html>
@@ -103,229 +117,249 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
           <meta charset="UTF-8">
           <title>Restaurant Bill - ${orderData.orderId}</title>
           <style>
+            @page {
+              size: 80mm auto;
+              margin: 0;
+              padding: 0;
+            }
+            
             @media print {
-              body { margin: 0; }
+              body { 
+                margin: 0; 
+                padding: 2mm;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
               .no-print { display: none; }
             }
             
             body {
               font-family: 'Courier New', monospace;
-              max-width: 350px;
+              font-size: 16pt;
+              line-height: 1.3;
+              max-width: 76mm;
+              width: 76mm;
               margin: 0 auto;
-              padding: 20px;
+              padding: 2mm;
               background: white;
-              color: black;
-              line-height: 1.4;
+              color: #000;
+              font-weight: bold;
             }
             
             .header {
               text-align: center;
+              margin-bottom: 8px;
               border-bottom: 2px solid #000;
-              padding-bottom: 15px;
-              margin-bottom: 20px;
+              padding-bottom: 6px;
             }
             
             .restaurant-name {
-              font-size: 24px;
+              font-size: 18pt;
               font-weight: bold;
-              margin-bottom: 5px;
+              margin-bottom: 4px;
+              text-transform: uppercase;
             }
             
             .restaurant-info {
-              font-size: 12px;
-              margin-bottom: 3px;
+              font-size: 12pt;
+              margin-bottom: 2px;
+              font-weight: bold;
             }
             
             .bill-info {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 20px;
-              padding-bottom: 10px;
-              border-bottom: 1px dashed #666;
-            }
-            
-            .bill-info div {
-              font-size: 14px;
-            }
-            
-            .items-header {
-              display: flex;
-              justify-content: space-between;
-              font-weight: bold;
+              margin-bottom: 10px;
+              padding-bottom: 6px;
               border-bottom: 1px solid #000;
-              padding-bottom: 5px;
+            }
+            
+            .bill-line {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 10px;
+              font-size: 12pt;
+            }
+            
+            .items-section {
               margin-bottom: 10px;
             }
             
-            .item-row {
+            .items-header {
+              font-weight: bold;
+              border-bottom: 2px solid #000;
+              padding-bottom: 4px;
+              margin-bottom: 4px;
               display: flex;
               justify-content: space-between;
-              margin-bottom: 8px;
-              font-size: 14px;
+              font-size: 15pt;
             }
             
-            .item-name {
-              flex: 1;
-              margin-right: 10px;
+            .item-row {
+              margin-bottom: 3px;
+              font-size: 12pt;
             }
             
-            .item-qty {
-              width: 30px;
-              text-align: center;
-            }
-            
-            .item-price {
-              width: 80px;
-              text-align: right;
+            .item-details {
+              display: flex;
+              justify-content: space-between;
+              margin-left: 2px;
             }
             
             .totals {
-              border-top: 1px solid #000;
+              border-top: 2px solid #000;
               padding-top: 10px;
-              margin-top: 15px;
+              margin-top: 10px;
             }
             
-            .total-row {
+            .total-line {
               display: flex;
               justify-content: space-between;
-              margin-bottom: 5px;
-              font-size: 14px;
+              margin-bottom: 4px;
+              font-size: 15pt;
             }
             
             .final-total {
               font-weight: bold;
-              font-size: 16px;
-              border-top: 2px solid #000;
-              padding-top: 5px;
-              margin-top: 10px;
+              border-top: 1px solid #000;
+              padding-top: 6px;
+              margin-top: 6px;
+              font-size: 16pt;
             }
 
             .payment-info {
-              background: #f5f5f5;
-              padding: 10px;
-              margin-top: 15px;
-              border-radius: 5px;
-              border: 1px solid #ddd;
+              margin-top: 12px;
+              padding: 8px 0;
+              border-top: 1px dashed #000;
+              border-bottom: 1px dashed #000;
+            }
+            
+            .payment-line {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 3px;
+              font-size: 15pt;
             }
             
             .footer {
               text-align: center;
-              margin-top: 25px;
-              padding-top: 15px;
-              border-top: 1px dashed #666;
-              font-size: 12px;
+              margin-top: 15px;
+              padding-top: 8px;
+              border-top: 1px dashed #000;
+              font-size: 14pt;
+            }
+            
+            .separator {
+              text-align: center;
+              margin: 8px 0;
+              font-size: 10pt;
             }
             
             .print-button {
-              background: #007bff;
+              background: #2563eb;
               color: white;
               border: none;
-              padding: 10px 20px;
-              border-radius: 5px;
+              padding: 12px 24px;
+              border-radius: 6px;
               cursor: pointer;
-              margin: 10px;
-            }
-            
-            .print-button:hover {
-              background: #0056b3;
+              margin: 8px;
+              font-size: 12px;
+              font-weight: bold;
             }
           </style>
         </head>
         <body>
           <div class="no-print" style="text-align: center; margin-bottom: 20px;">
-            <button class="print-button" onclick="window.print()">🖨️ Print Bill</button>
-            <button class="print-button" onclick="window.close()">❌ Close</button>
+            <button class="print-button" onclick="window.print()">Print Bill</button>
+            <button class="print-button" onclick="window.close()" style="background: #64748b;">Close</button>
           </div>
           
           <div class="header">
-            <div class="restaurant-name">🍽️ RESTAURANTS BY RONAN</div>
-            <div class="restaurant-info">📍 Your Restaurant Address</div>
-            <div class="restaurant-info">📞 +94 777 66 9191</div>
-         
+            <div class="restaurant-name">RESTAURANTS BY RONAN</div>
+            <div class="restaurant-info">288/12L,Royal Gardens,Rajagiriya.</div>
+            <div class="restaurant-info">Tel: +94 777 66 9191</div>
           </div>
           
           <div class="bill-info">
-            <div>
-              <strong>Bill No:</strong> ${orderData.orderId}<br>
-              <strong>Table:</strong> ${orderData.table === 'takeaway' || !orderData.table ? ' Takeaway' : `Table ${orderData.table}`}<br>
-              <strong>Order Type:</strong> ${orderData.placedBy === 'customer' ? ' Customer' : ` ${orderData.placedBy}`}
+            <div class="bill-line">
+              <span>Bill: ${orderData.orderId}</span>
+              <span>Date: ${billDate}</span>
             </div>
-            <div style="text-align: right;">
-              <strong>Date:</strong> ${billDate}<br>
-              <strong>Time:</strong> ${billTime}<br>
-              <strong>Cashier:</strong> Cashier
+            <div class="bill-line">
+              <span>Table: ${orderData.table === 'takeaway' || !orderData.table ? 'Takeaway' : ` ${orderData.table}`}</span>
+              <span>Time: ${billTime}</span>
             </div>
+
           </div>
           
-          <div class="items-header">
-            <span>Item</span>
-            <span>Qty</span>
-            <span>Unit Price</span>
-            <span>Amount</span>
-          </div>
-          
-          ${orderData.items.map(item => `
-            <div class="item-row">
-              <span class="item-name">${item.dishName}</span>
-              <span class="item-qty">${item.qty}</span>
-              <span class="item-unit">${item.price}</span>
-              <span class="item-price">LKR ${(item.price * item.qty).toFixed(2)}</span>
+          <div class="items-section">
+            <div class="items-header">
+              <span>Item</span>
+              <span>Qty</span>
+              <span>Price</span>
+              <span>Total</span>
             </div>
-          `).join('')}
+            
+            ${orderData.items.map(item => `
+              <div class="item-row">
+                <div>${item.dishName}</div>
+                <div class="item-details">
+                  <span>${item.qty}</span>
+                  <span>${item.price.toFixed(2)}</span>
+                  <span>${(item.price * item.qty).toFixed(2)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
           
           <div class="totals">
-            <div class="total-row">
+            <div class="total-line">
               <span>Subtotal:</span>
               <span>LKR ${orderData.subtotal.toFixed(2)}</span>
             </div>
             ${orderData.discount > 0 ? `
-              <div class="total-row">
+              <div class="total-line">
                 <span>Discount ${orderData.discountType === 'percentage' ? `(${orderData.discount}%)` : '(Fixed)'}:</span>
                 <span>- LKR ${(orderData.discountType === 'percentage' ? (orderData.subtotal * orderData.discount) / 100 : orderData.discount).toFixed(2)}</span>
               </div>
               ${orderData.discountReason ? `
-                <div class="total-row" style="font-size: 12px; color: #666;">
-                  <span>Reason: ${orderData.discountReason}</span>
-                  <span></span>
-                </div>
+                <div class="total-line" style="font-size: 13pt;">Reason: ${orderData.discountReason}</div>
               ` : ''}
             ` : ''}
-            <div class="total-row final-total">
-              <span>TOTAL AMOUNT:</span>
+            <div class="total-line final-total">
+              <span>TOTAL:</span>
               <span>LKR ${orderData.finalAmount.toFixed(2)}</span>
             </div>
           </div>
 
           <div class="payment-info">
-            <div class="total-row">
-              <span><strong>Payment Method:</strong></span>
-              <span><strong>${orderData.paymentMethod.toUpperCase()}</strong></span>
+            <div class="payment-line">
+              <span>Payment:</span>
+              <span>${orderData.paymentMethod.toUpperCase()}</span>
             </div>
-            <div class="total-row">
-              <span>Amount Paid:</span>
+            <div class="payment-line">
+              <span>Paid:</span>
               <span>LKR ${orderData.amountPaid.toFixed(2)}</span>
             </div>
             ${orderData.balance > 0 ? `
-              <div class="total-row" style="font-weight: bold; color: #28a745;">
-                <span>Balance (Change):</span>
+              <div class="payment-line">
+                <span>Change:</span>
                 <span>LKR ${orderData.balance.toFixed(2)}</span>
               </div>
             ` : ''}
           </div>
           
+          <div class="separator">
+            --------------------------------
+          </div>
+          
           <div class="footer">
-
-            <div style="margin-bottom: 10px;">
-              ⭐ Rate your experience: www.wowrestaurant.com/feedback
-            </div>
-            <div style="margin-bottom: 10px;">
-              📱 Follow us on social media @WowRestaurant
-            </div>
+            <div>Thank you for dining with us!</div>
+            <div>Please visit again!</div>
           </div>
           
           <script>
-            // Auto print when page loads (optional)
-            // window.onload = function() { window.print(); }
+            window.onload = function() { 
+              setTimeout(() => window.print(), 500); 
+            }
           </script>
         </body>
       </html>
@@ -344,39 +378,48 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white">Bill Order - {order.orderId}</h2>
+      <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto border border-slate-700">
+        <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-700">
+          <h2 className="text-2xl font-bold text-white">Bill Order - {order.orderId}</h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white"
+            className="text-slate-400 hover:text-white text-lg font-bold"
           >
-            ✕
+            ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Order Summary */}
-          <div className="bg-slate-700 p-4 rounded">
-            <h3 className="text-white font-semibold mb-2">Order Summary</h3>
-            <div className="text-sm text-slate-300">
-              <p>Table: {order.table === 'takeaway' || !order.table ? 'Takeaway' : `Table ${order.table}`}</p>
-              <p>Items: {order.items?.length || 0}</p>
-              <p>Subtotal: LKR {subtotal.toFixed(2)}</p>
+          <div className="bg-slate-700 p-4 rounded-lg border border-slate-600">
+            <h3 className="text-white font-bold text-lg mb-3">Order Summary</h3>
+            <div className="text-sm text-slate-300 space-y-1">
+              <p className="flex justify-between">
+                <span>Table:</span>
+                <span className="font-medium">{order.table === 'takeaway' || !order.table ? 'Takeaway' : `Table ${order.table}`}</span>
+              </p>
+              <p className="flex justify-between">
+                <span>Items:</span>
+                <span className="font-medium">{order.items?.length || 0}</span>
+              </p>
+              <p className="flex justify-between">
+                <span>Subtotal:</span>
+                <span className="font-medium">LKR {subtotal.toFixed(2)}</span>
+              </p>
             </div>
           </div>
 
           {/* Discount Section */}
-          <div className="space-y-3">
-            <h3 className="text-white font-semibold">Discount (Optional)</h3>
+          <div className="space-y-4">
+            <h3 className="text-white font-bold text-lg">Discount</h3>
             
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-slate-300 mb-1">Discount Type</label>
+                <label className="block text-sm text-slate-300 mb-2 font-medium">Discount Type</label>
                 <select
                   value={discountType}
                   onChange={(e) => setDiscountType(e.target.value)}
-                  className="w-full p-2 bg-slate-700 text-white rounded border border-slate-600"
+                  className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 >
                   <option value="fixed">Fixed Amount</option>
                   <option value="percentage">Percentage</option>
@@ -384,7 +427,7 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
               </div>
               
               <div>
-                <label className="block text-sm text-slate-300 mb-1">
+                <label className="block text-sm text-slate-300 mb-2 font-medium">
                   {discountType === 'percentage' ? 'Discount %' : 'Discount Amount'}
                 </label>
                 <input
@@ -394,81 +437,81 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
                   step={discountType === 'percentage' ? '0.1' : '0.01'}
                   value={discount}
                   onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
-                  className="w-full p-2 bg-slate-700 text-white rounded border border-slate-600"
+                  className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   placeholder="0"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm text-slate-300 mb-1">Discount Reason (Optional)</label>
+              <label className="block text-sm text-slate-300 mb-2 font-medium">Discount Reason</label>
               <input
                 type="text"
                 value={discountReason}
                 onChange={(e) => setDiscountReason(e.target.value)}
-                className="w-full p-2 bg-slate-700 text-white rounded border border-slate-600"
-                placeholder="e.g., Customer complaint, Staff discount..."
+                className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="Enter discount reason..."
               />
             </div>
           </div>
 
           {/* Amount Calculation */}
-          <div className="bg-slate-700 p-4 rounded space-y-2">
+          <div className="bg-slate-700 p-4 rounded-lg border border-slate-600 space-y-3">
             <div className="flex justify-between text-slate-300">
               <span>Subtotal:</span>
-              <span>LKR {subtotal.toFixed(2)}</span>
+              <span className="font-medium">LKR {subtotal.toFixed(2)}</span>
             </div>
             {discount > 0 && (
               <div className="flex justify-between text-red-400">
                 <span>Discount:</span>
-                <span>- LKR {discountAmount.toFixed(2)}</span>
+                <span className="font-medium">- LKR {discountAmount.toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between text-white font-bold text-lg border-t border-slate-600 pt-2">
+            <div className="flex justify-between text-white font-bold text-lg border-t border-slate-600 pt-3">
               <span>Total Amount:</span>
               <span>LKR {finalAmount.toFixed(2)}</span>
             </div>
           </div>
 
           {/* Payment Section */}
-          <div className="space-y-3">
-            <h3 className="text-white font-semibold">Payment Details</h3>
+          <div className="space-y-4">
+            <h3 className="text-white font-bold text-lg">Payment Details</h3>
             
             <div>
-              <label className="block text-sm text-slate-300 mb-1">Payment Method</label>
+              <label className="block text-sm text-slate-300 mb-2 font-medium">Payment Method</label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full p-2 bg-slate-700 text-white rounded border border-slate-600"
+                className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
               >
-                <option value="cash">💵 Cash</option>
-                <option value="card">💳 Card</option>
-                <option value="mobile">📱 Mobile Payment</option>
+                <option value="cash">Cash</option>
+                <option value="card">Card</option>
+                <option value="mobile">Mobile Payment</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm text-slate-300 mb-1">Amount Paid</label>
+              <label className="block text-sm text-slate-300 mb-2 font-medium">Amount Paid</label>
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={amountPaid}
                 onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
-                className="w-full p-2 bg-slate-700 text-white rounded border border-slate-600"
+                className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                 placeholder="Enter amount paid"
                 disabled={paymentMethod !== 'cash'}
               />
               {paymentMethod !== 'cash' && (
-                <p className="text-xs text-slate-400 mt-1">
-                  Exact amount required for card/mobile payments
+                <p className="text-xs text-slate-400 mt-2">
+                  Exact amount required for card and mobile payments
                 </p>
               )}
             </div>
 
             {balance > 0 && (
-              <div className="bg-green-900 p-3 rounded">
-                <div className="flex justify-between text-green-300 font-semibold">
+              <div className="bg-green-900/30 p-4 rounded-lg border border-green-800">
+                <div className="flex justify-between text-green-300 font-bold">
                   <span>Balance (Change):</span>
                   <span>LKR {balance.toFixed(2)}</span>
                 </div>
@@ -477,18 +520,18 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex space-x-3 pt-4">
+          <div className="flex space-x-4 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-slate-600 text-white py-2 px-4 rounded hover:bg-slate-500 transition-colors"
+              className="flex-1 bg-slate-600 text-white py-3 px-4 rounded-lg hover:bg-slate-500 transition-colors font-medium"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || (amountPaid < finalAmount && paymentMethod === 'cash')}
-              className="flex-1 bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700 transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
+              className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed font-medium"
             >
               {loading ? 'Processing...' : 'Bill & Print'}
             </button>

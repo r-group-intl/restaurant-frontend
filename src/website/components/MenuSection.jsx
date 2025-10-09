@@ -228,7 +228,7 @@ const MenuSection = ({ onAddToCart }) => {
           
           <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
             Authentic Hungarian cuisine crafted with traditional recipes and the finest ingredients, 
-            bringing you the true taste of Budapest.
+            bringing you the true taste of Budapest , Hungary.
           </p>
           
           <div className="flex items-center justify-center space-x-2 mt-6">

@@ -145,7 +145,7 @@ const RestaurantFooter = () => {
                 © 2025 Restaurants By Ronan 
               </p>
               <p className="text-gray-500 text-sm mt-1 flex items-center justify-center md:justify-start">
-                <span>Powered by Ronan Group</span>
+                <span>Powered by Ronan Group IT Team</span>
                 <span className="mx-2">•</span>
 
               </p>

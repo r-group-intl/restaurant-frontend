@@ -19,6 +19,8 @@ import {
   PresentationChartLineIcon,
   ComputerDesktopIcon,
   ClipboardDocumentCheckIcon,
+  TrashIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 const SidebarItem = ({ to, label, icon }) => (
@@ -92,6 +94,14 @@ export default function Layout({ children }) {
           ) : user?.role === 'cashier' ? (
             <>
               <SidebarItem to="cashier-dashboard" label="Cashier Dashboard" icon={<ComputerDesktopIcon className="w-5 h-5" />} />
+              
+              <div className="pt-4 pb-2">
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Daily Management
+                </div>
+              </div>
+              <SidebarItem to="wastage-management" label="Wastage Management" icon={<TrashIcon className="w-5 h-5" />} />
+              <SidebarItem to="out-of-stock" label="Out of Stock" icon={<ExclamationTriangleIcon className="w-5 h-5" />} />
             </>
           ) : user?.role === 'waiter' ? (
             <>
@@ -135,6 +145,8 @@ export default function Layout({ children }) {
                     <SidebarItem to="categories" label="Categories" icon={<TagIcon className="w-5 h-5" />} />
                     <SidebarItem to="suppliers" label="Suppliers" icon={<TruckIcon className="w-5 h-5" />} />
                     <SidebarItem to="supplier-payments" label="Supplier Payments" icon={<BanknotesIcon className="w-5 h-5" />} />
+                    <SidebarItem to="wastage-management" label="Wastage Management" icon={<TrashIcon className="w-5 h-5" />} />
+                    <SidebarItem to="out-of-stock" label="Out of Stock" icon={<ExclamationTriangleIcon className="w-5 h-5" />} />
                   </>
                 )}
                 
