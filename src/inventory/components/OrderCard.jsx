@@ -23,10 +23,21 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
     return `🪑 Table ${order.table}`;
   };
 
+  // Function to determine if an item is pre-made (ready category)
+  const isPreMadeCategory = (category) => {
+    const preMadeCategories = ['Bakery', 'Pancakes - Savory', 'Pancakes - Sweets','Ice Cream'];
+    return preMadeCategories.includes(category);
+  };
+
   // Function to determine item highlight style
   const getItemHighlightStyle = (item) => {
+    // Pre-made items are always ready
+    if (isPreMadeCategory(item.category)) {
+      return 'bg-green-900/40 border-l-4 border-green-500';
+    }
+    
     // Highlight beverages differently
-    if (item.category === 'Beverage') {
+    if (item.category === 'Beverage' || item.category === 'Beverages') {
       return 'bg-blue-900/40 border-l-4 border-blue-500';
     }
     
@@ -36,7 +47,28 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
     }
     
     // Default highlight for regular food items
-    return 'bg-slate-700/40 border-l-4 border-green-500';
+    return 'bg-slate-700/40 border-l-4 border-yellow-500';
+  };
+
+  // Function to get category display name and emoji
+  const getCategoryDisplay = (category) => {
+    const categoryMap = {
+      'Bakery': { emoji: '🥖', name: 'Bakery' },
+      'Pancakes - Savory': { emoji: '🥞', name: 'Pancake-Savory' },
+      'Pancakes - Sweets': { emoji: '🧇', name: 'Pancake-Sweet' },
+      'Beverage': { emoji: '🥤', name: 'Beverage' },
+      'Beverages': { emoji: '🥤', name: 'Beverage' },
+      'Main Dish': { emoji: '🍽️', name: 'Main Dish' },
+      'Mains': { emoji: '🍽️', name: 'Main Dish' },
+      'Soups': { emoji: '🍲', name: 'Soup' },
+      'Salads': { emoji: '🥗', name: 'Salad' },
+      'Desserts': { emoji: '🍰', name: 'Dessert' },
+      'Dessert': { emoji: '🍰', name: 'Dessert' },
+      'Sides': { emoji: '🍟', name: 'Side' },
+      'Side Dish': { emoji: '🍟', name: 'Side' }
+    };
+    
+    return categoryMap[category] || { emoji: '🍽️', name: category || 'Other' };
   };
 
   return (
@@ -47,10 +79,11 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
       {/* Header */}
       <div className="flex justify-between items-start mb-3">
         <div>
-          <h3 className="text-lg font-bold text-white bg-slate-900/50 px-2 py-1 rounded inline-block">
+          <h3 className="text-lg text-white mt-1 font-bold">{getTableDisplay(order)}</h3>
+          <p className="text-sm  text-white bg-slate-900/50 px-2 py-1 rounded inline-block">
             {order.orderId}
-          </h3>
-          <p className="text-sm text-slate-300 mt-1 font-medium">{getTableDisplay(order)}</p>
+          </p>
+       
           <p className="text-xs text-slate-400">
             {order.placedById ? 
               `by ${order.placedById.name} (${order.placedBy})` : 
@@ -63,67 +96,120 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
         </Badge>
       </div>
 
-      {/* Items - Enhanced with better highlighting */}
-      <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
-        {order.items.map((item, index) => (
-          <div 
-            key={index} 
-            className={`p-3 rounded-lg ${getItemHighlightStyle(item)} transition-colors`}
-          >
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`font-semibold ${
-                    item.category === 'Beverage' ? 'text-blue-300' : 'text-white'
-                  }`}>
-                    {item.dishName}
-                  </span>
-                  {item.category === 'Beverage' && (
-                    <Badge variant="secondary" className="bg-blue-600 text-white text-xs">
-                      🥤 Beverage
-                    </Badge>
+      {/* Items - Enhanced with better highlighting and individual status */}
+      <div className="space-y-2 mb-4" style={{ maxHeight: 'none' }}>
+        {order.items.map((item, index) => {
+          const isPreMade = isPreMadeCategory(item.category);
+          const categoryInfo = getCategoryDisplay(item.category);
+          const effectiveStatus = isPreMade ? 'done' : item.status;
+          
+          return (
+            <div 
+              key={index} 
+              className={`p-3 rounded-lg transition-colors ${
+                effectiveStatus === 'done' || isPreMade
+                  ? 'bg-green-900/40 border-l-4 border-green-500' 
+                  : getItemHighlightStyle(item)
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className={`font-semibold ${
+                      effectiveStatus === 'done' || isPreMade
+                        ? 'text-green-300' + (isPreMade ? '' : ' line-through')
+                        : item.category === 'Beverage' || item.category === 'Beverages' ? 'text-blue-300' : 'text-white'
+                    }`}>
+                      {item.dishName} - {categoryInfo.emoji} {categoryInfo.name}
+                    </span>
+                    
+                    {/* Status badges */}
+                    {(effectiveStatus === 'done' || isPreMade) && (
+                      <Badge variant="secondary" className="bg-green-600 text-white text-xs">
+                        ✅ Ready
+                      </Badge>
+                    )}
+                    {effectiveStatus === 'pending' && !isPreMade && (
+                      <Badge variant="secondary" className="bg-yellow-600 text-white text-xs">
+                        🔥 Cooking
+                      </Badge>
+                    )}
+                    {(item.category === 'Beverage' || item.category === 'Beverages') && (
+                      <Badge variant="secondary" className="bg-blue-600 text-white text-xs">
+                        🥤 Beverage
+                      </Badge>
+                    )}
+                    {isPreMade && (
+                      <Badge variant="secondary" className="bg-purple-600 text-white text-xs">
+                        ⚡ Pre-made
+                      </Badge>
+                    )}
+                    {item.specialRequest && (
+                      <Badge variant="secondary" className="bg-orange-600 text-white text-xs">
+                        ✨ Special
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {/* Quantity and Price */}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-300 font-medium">
+                      {item.qty}x 
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-300 font-bold">
+                        LKR {formatCurrency(item.price)}
+                      </span>
+                      {/* Individual item action button */}
+                      {effectiveStatus === 'pending' && !isPreMade && onDone && (
+                        <button
+                          onClick={() => onDone(order._id, item._id)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-bold transition-colors"
+                          title={`Mark ${item.dishName} as done`}
+                        >
+                          ✓
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Item timing info */}
+                  {item.addedAt && (
+                    <div className="text-xs text-slate-400 mt-1">
+                      Added: {new Date(item.addedAt).toLocaleTimeString()}
+                      {(item.completedAt || isPreMade) && (
+                        <span className="text-green-400 ml-2">
+                          • Ready: {isPreMade ? 'Pre-made' : new Date(item.completedAt).toLocaleTimeString()}
+                        </span>
+                      )}
+                    </div>
                   )}
+
+                  {/* Special Requests for this item */}
                   {item.specialRequest && (
-                    <Badge variant="secondary" className="bg-orange-600 text-white text-xs">
-                      ✨ Special
-                    </Badge>
+                    <div className="mt-2 p-2 bg-orange-800/30 rounded border border-orange-500/50">
+                      <p className="text-orange-200 text-xs font-medium">
+                        <span className="font-bold">Note:</span> {item.specialRequest}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Modifications */}
+                  {item.modifications && item.modifications.length > 0 && (
+                    <div className="mt-1">
+                      <p className="text-orange-200 text-xs font-semibold">Modifications:</p>
+                      <ul className="text-orange-200 text-xs list-disc list-inside">
+                        {item.modifications.map((mod, modIndex) => (
+                          <li key={modIndex}>{mod}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
-                
-                {/* Quantity and Price */}
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-300 font-medium">
-                    {item.qty}x 
-                  </span>
-                  <span className="text-slate-300 font-bold">
-                    LKR {formatCurrency(item.price)}
-                  </span>
-                </div>
-
-                {/* Special Requests for this item */}
-                {item.specialRequest && (
-                  <div className="mt-2 p-2 bg-orange-800/30 rounded border border-orange-500/50">
-                    <p className="text-orange-200 text-xs font-medium">
-                      <span className="font-bold">Note:</span> {item.specialRequest}
-                    </p>
-                  </div>
-                )}
-
-                {/* Modifications */}
-                {item.modifications && item.modifications.length > 0 && (
-                  <div className="mt-1">
-                    <p className="text-orange-200 text-xs font-semibold">Modifications:</p>
-                    <ul className="text-orange-200 text-xs list-disc list-inside">
-                      {item.modifications.map((mod, modIndex) => (
-                        <li key={modIndex}>{mod}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Customer Notes - Enhanced visibility */}
@@ -148,7 +234,8 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
       {/* Actions */}
       {showActions && (
         <div className="flex space-x-2">
-          {order.status === 'pending' && onDone && (
+          {/* Legacy actions for takeaway orders or orders without item-level status */}
+          {order.orderType === 'takeaway' && order.status === 'pending' && onDone && (
             <button
               onClick={() => onDone(order._id)}
               className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-bold text-sm shadow-lg hover:shadow-green-500/25"
@@ -156,7 +243,49 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
               ✅ Mark Done
             </button>
           )}
-          {(order.status === 'done' || order.status === 'pending') && onBill && (
+          
+          {/* Table orders - show item summary and overall status */}
+          {order.orderType === 'table' && (
+            <>
+              {(() => {
+                const pendingItems = order.items?.filter(item => {
+                  const isPreMade = isPreMadeCategory(item.category);
+                  return !isPreMade && item.status === 'pending';
+                }) || [];
+                
+                const readyItems = order.items?.filter(item => {
+                  const isPreMade = isPreMadeCategory(item.category);
+                  return isPreMade || item.status === 'done';
+                }) || [];
+                
+                if (pendingItems.length > 0) {
+                  return (
+                    <div className="flex-1 bg-yellow-600/20 border border-yellow-500 text-yellow-200 py-2 px-4 rounded-lg text-sm text-center">
+                      🔥 {pendingItems.length} item{pendingItems.length > 1 ? 's' : ''} cooking
+                    </div>
+                  );
+                } else if (readyItems.length > 0) {
+                  return (
+                    <div className="flex-1 bg-green-600/20 border border-green-500 text-green-200 py-2 px-4 rounded-lg text-sm text-center">
+                      ✅ All items ready for Table {order.table}
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="flex-1 bg-slate-600/20 border border-slate-500 text-slate-300 py-2 px-4 rounded-lg text-sm text-center">
+                    No active items
+                  </div>
+                );
+              })()}
+            </>
+          )}
+          
+          {/* Billing action for ready orders */}
+          {(order.status === 'done' || (order.orderType === 'table' && order.items?.every(item => {
+            const isPreMade = isPreMadeCategory(item.category);
+            return isPreMade || item.status === 'done';
+          }))) && onBill && (
             <button
               onClick={() => onBill(order._id)}
               className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-bold text-sm shadow-lg hover:shadow-blue-500/25"

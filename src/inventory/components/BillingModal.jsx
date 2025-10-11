@@ -109,261 +109,538 @@ const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
     const currentDate = new Date();
     const billDate = currentDate.toLocaleDateString('en-GB');
     const billTime = currentDate.toLocaleTimeString('en-GB', { hour12: false });
+/*
+const billHTML = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Restaurant Bill - ${orderData.orderId}</title>
+    <style>
+      @page {
+        size: 80mm auto;
+        margin: 0;
+        padding: 0;
+      }
 
-    const billHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Restaurant Bill - ${orderData.orderId}</title>
-          <style>
-            @page {
-              size: 80mm auto;
-              margin: 0;
-              padding: 0;
-            }
-            
-            @media print {
-              body { 
-                margin: 0; 
-                padding: 2mm;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-              }
-              .no-print { display: none; }
-            }
-            
-            body {
-              font-family: 'Courier New', monospace;
-              font-size: 16pt;
-              line-height: 1.3;
-              max-width: 76mm;
-              width: 76mm;
-              margin: 0 auto;
-              padding: 2mm;
-              background: white;
-              color: #000;
-              font-weight: bold;
-            }
-            
-            .header {
-              text-align: center;
-              margin-bottom: 8px;
-              border-bottom: 2px solid #000;
-              padding-bottom: 6px;
-            }
-            
-            .restaurant-name {
-              font-size: 18pt;
-              font-weight: bold;
-              margin-bottom: 4px;
-              text-transform: uppercase;
-            }
-            
-            .restaurant-info {
-              font-size: 12pt;
-              margin-bottom: 2px;
-              font-weight: bold;
-            }
-            
-            .bill-info {
-              margin-bottom: 10px;
-              padding-bottom: 6px;
-              border-bottom: 1px solid #000;
-            }
-            
-            .bill-line {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 10px;
-              font-size: 12pt;
-            }
-            
-            .items-section {
-              margin-bottom: 10px;
-            }
-            
-            .items-header {
-              font-weight: bold;
-              border-bottom: 2px solid #000;
-              padding-bottom: 4px;
-              margin-bottom: 4px;
-              display: flex;
-              justify-content: space-between;
-              font-size: 15pt;
-            }
-            
-            .item-row {
-              margin-bottom: 3px;
-              font-size: 12pt;
-            }
-            
-            .item-details {
-              display: flex;
-              justify-content: space-between;
-              margin-left: 2px;
-            }
-            
-            .totals {
-              border-top: 2px solid #000;
-              padding-top: 10px;
-              margin-top: 10px;
-            }
-            
-            .total-line {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 4px;
-              font-size: 15pt;
-            }
-            
-            .final-total {
-              font-weight: bold;
-              border-top: 1px solid #000;
-              padding-top: 6px;
-              margin-top: 6px;
-              font-size: 16pt;
-            }
+      @media print {
+        body {
+          margin: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .no-print { display: none; }
+      }
 
-            .payment-info {
-              margin-top: 12px;
-              padding: 8px 0;
-              border-top: 1px dashed #000;
-              border-bottom: 1px dashed #000;
-            }
-            
-            .payment-line {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 3px;
-              font-size: 15pt;
-            }
-            
-            .footer {
-              text-align: center;
-              margin-top: 15px;
-              padding-top: 8px;
-              border-top: 1px dashed #000;
-              font-size: 14pt;
-            }
-            
-            .separator {
-              text-align: center;
-              margin: 8px 0;
-              font-size: 10pt;
-            }
-            
-            .print-button {
-              background: #2563eb;
-              color: white;
-              border: none;
-              padding: 12px 24px;
-              border-radius: 6px;
-              cursor: pointer;
-              margin: 8px;
-              font-size: 12px;
-              font-weight: bold;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="no-print" style="text-align: center; margin-bottom: 20px;">
-            <button class="print-button" onclick="window.print()">Print Bill</button>
-            <button class="print-button" onclick="window.close()" style="background: #64748b;">Close</button>
-          </div>
-          
-          <div class="header">
-            <div class="restaurant-name">RESTAURANTS BY RONAN</div>
-            <div class="restaurant-info">288/12L,Royal Gardens,Rajagiriya.</div>
-            <div class="restaurant-info">Tel: +94 777 66 9191</div>
-          </div>
-          
-          <div class="bill-info">
-            <div class="bill-line">
-              <span>Bill: ${orderData.orderId}</span>
-              <span>Date: ${billDate}</span>
-            </div>
-            <div class="bill-line">
-              <span>Table: ${orderData.table === 'takeaway' || !orderData.table ? 'Takeaway' : ` ${orderData.table}`}</span>
-              <span>Time: ${billTime}</span>
-            </div>
+      body {
+        font-family: 'Arial', sans-serif;
+        font-size: 12pt;
+        line-height: 1.3;
+        margin: 0 auto;
+      }
 
-          </div>
-          
-          <div class="items-section">
-            <div class="items-header">
-              <span>Item</span>
-              <span>Qty</span>
-              <span>Price</span>
-              <span>Total</span>
-            </div>
-            
-            ${orderData.items.map(item => `
-              <div class="item-row">
-                <div>${item.dishName}</div>
-                <div class="item-details">
-                  <span>${item.qty}</span>
-                  <span>${item.price.toFixed(2)}</span>
-                  <span>${(item.price * item.qty).toFixed(2)}</span>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-          
-          <div class="totals">
-            <div class="total-line">
-              <span>Subtotal:</span>
-              <span>LKR ${orderData.subtotal.toFixed(2)}</span>
-            </div>
-            ${orderData.discount > 0 ? `
-              <div class="total-line">
-                <span>Discount ${orderData.discountType === 'percentage' ? `(${orderData.discount}%)` : '(Fixed)'}:</span>
-                <span>- LKR ${(orderData.discountType === 'percentage' ? (orderData.subtotal * orderData.discount) / 100 : orderData.discount).toFixed(2)}</span>
-              </div>
-              ${orderData.discountReason ? `
-                <div class="total-line" style="font-size: 13pt;">Reason: ${orderData.discountReason}</div>
-              ` : ''}
-            ` : ''}
-            <div class="total-line final-total">
-              <span>TOTAL:</span>
-              <span>LKR ${orderData.finalAmount.toFixed(2)}</span>
-            </div>
-          </div>
+      .header {
+        text-align: center;
+        margin-bottom: 8px;
+        border-bottom: 2px solid #000;
+        padding-bottom: 6px;
+      }
 
-          <div class="payment-info">
-            <div class="payment-line">
-              <span>Payment:</span>
-              <span>${orderData.paymentMethod.toUpperCase()}</span>
-            </div>
-            <div class="payment-line">
-              <span>Paid:</span>
-              <span>LKR ${orderData.amountPaid.toFixed(2)}</span>
-            </div>
-            ${orderData.balance > 0 ? `
-              <div class="payment-line">
-                <span>Change:</span>
-                <span>LKR ${orderData.balance.toFixed(2)}</span>
-              </div>
-            ` : ''}
+      .restaurant-name {
+        font-size: 18pt;
+        font-weight: normal;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+      }
+
+      .restaurant-info {
+        font-size: 12pt;
+        margin-bottom: 2px;
+        font-weight: normal;
+      }
+
+      .bill-info {
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #000;
+      }
+
+      .bill-line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        font-size: 10pt;
+      }
+
+      .items-section {
+        margin-bottom: 10px;
+      }
+
+      .items-header {
+        display: grid;
+        grid-template-columns: 50% 15% 15% 20%;
+        font-weight: bold;
+        border-bottom: 2px solid #000;
+        padding-bottom: 4px;
+        margin-bottom: 4px;
+        font-size: 13pt;
+      }
+
+      .items-header span {
+        text-align: right;
+      }
+      .items-header span:first-child {
+        text-align: left;
+      }
+
+      .item-row {
+        margin-bottom: 4px;
+      }
+
+      .item-name {
+        font-size: 12pt;
+        margin-bottom: 2px;
+        word-break: break-word;
+      }
+
+      .item-details {
+        display: grid;
+        grid-template-columns: 50% 15% 15% 20%;
+        font-size: 11pt;
+      }
+
+      .item-details span {
+        text-align: right;
+      }
+      .item-details span:first-child {
+        text-align: left;
+      }
+
+      .totals {
+        border-top: 2px solid #000;
+        padding-top: 10px;
+        margin-top: 10px;
+      }
+
+      .total-line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+        font-size: 13pt;
+      }
+
+      .final-total {
+        font-weight: bold;
+        border-top: 1px solid #000;
+        padding-top: 6px;
+        margin-top: 6px;
+        font-size: 14pt;
+      }
+
+      .payment-info {
+        margin-top: 12px;
+        padding: 8px 0;
+        border-top: 1px dashed #000;
+        border-bottom: 1px dashed #000;
+      }
+
+      .payment-line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+        font-size: 13pt;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 15px;
+        padding-top: 8px;
+        border-top: 1px dashed #000;
+        font-size: 13pt;
+      }
+
+      .separator {
+        text-align: center;
+        margin: 8px 0;
+        font-size: 10pt;
+      }
+
+      .print-button {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 8px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+      <button class="print-button" onclick="window.print()">Print Bill</button>
+      <button class="print-button" onclick="window.close()" style="background: #64748b;">Close</button>
+    </div>
+
+    <div class="header">
+      <div style="text-align: center; margin-bottom: 8px;">
+        <img src="/Logo W.png" alt="Restaurant Logo" style="max-width: 120px; height: auto; margin-bottom: 6px;" />
+      </div>
+      <div class="restaurant-name">RESTAURANTS BY RONAN</div>
+      <div class="restaurant-info">288/12L, Royal Gardens, Rajagiriya.</div>
+      <div class="restaurant-info">Tel: +94 777 66 9191</div>
+    </div>
+
+    <div class="bill-info">
+      <div class="bill-line">
+        <span>Bill: ${orderData.orderId}</span>
+        <span>Date: ${billDate}</span>
+      </div>
+      <div class="bill-line">
+        <span>Table: ${orderData.table === 'takeaway' || !orderData.table ? 'Takeaway' : ` ${orderData.table}`}</span>
+        <span>Time: ${billTime}</span>
+      </div>
+    </div>
+
+    <div class="items-section">
+      <div class="items-header">
+        <span>Item</span>
+        <span>Qty</span>
+        <span>Price</span>
+        <span>Total</span>
+      </div>
+
+      ${orderData.items.map(item => `
+        <div class="item-row">
+          <div class="item-name">${item.dishName}</div>
+          <div class="item-details">
+            <span></span>
+            <span>${item.qty}</span>
+            <span>${item.price.toFixed(2)}</span>
+            <span>${(item.price * item.qty).toFixed(2)}</span>
           </div>
-          
-          <div class="separator">
-            --------------------------------
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="totals">
+      <div class="total-line">
+        <span>Subtotal:</span>
+        <span>LKR ${orderData.subtotal.toFixed(2)}</span>
+      </div>
+      ${orderData.discount > 0 ? `
+        <div class="total-line">
+          <span>Discount ${orderData.discountType === 'percentage' ? `(${orderData.discount}%)` : '(Fixed)'}:</span>
+          <span>- LKR ${(orderData.discountType === 'percentage' ? (orderData.subtotal * orderData.discount) / 100 : orderData.discount).toFixed(2)}</span>
+        </div>
+        ${orderData.discountReason ? `
+          <div class="total-line" style="font-size: 11pt;">Reason: ${orderData.discountReason}</div>
+        ` : ''}
+      ` : ''}
+      <div class="total-line final-total">
+        <span>TOTAL:</span>
+        <span>LKR ${orderData.finalAmount.toFixed(2)}</span>
+      </div>
+    </div>
+
+    <div class="payment-info">
+      <div class="payment-line">
+        <span>Payment:</span>
+        <span>${orderData.paymentMethod.toUpperCase()}</span>
+      </div>
+      <div class="payment-line">
+        <span>Paid:</span>
+        <span>LKR ${orderData.amountPaid.toFixed(2)}</span>
+      </div>
+      ${orderData.balance > 0 ? `
+        <div class="payment-line">
+          <span>Change:</span>
+          <span>LKR ${orderData.balance.toFixed(2)}</span>
+        </div>
+      ` : ''}
+    </div>
+
+    <div class="separator">
+      --------------------------------
+    </div>
+
+    <div class="footer">
+      <div>Thank you for dining with us!</div>
+      <div>Please visit again!</div>
+      <div style="margin-top: 6px;">*****</div>
+    </div>
+
+    <script>
+      window.onload = function() { 
+        setTimeout(() => window.print(), 500); 
+      }
+    </script>
+  </body>
+</html>
+`;
+*/
+
+const billHTML = `
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Restaurant Bill - ${orderData.orderId}</title>
+    <style>
+      @page {
+        size: 80mm auto;
+        margin: 0;
+        padding: 0;
+      }
+
+      @media print {
+        body {
+          margin: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .no-print { display: none; }
+      }
+
+      body {
+        font-family: '';
+        font-size: 12pt;
+        line-height: 1.3;
+        margin: 0 auto;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 8px;
+        border-bottom: 2px solid #000;
+        padding-bottom: 6px;
+      }
+
+      .restaurant-name {
+        font-size: 18pt;
+        font-weight: normal;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+      }
+
+      .restaurant-info {
+        font-size: 12pt;
+        margin-bottom: 2px;
+        font-weight: normal;
+      }
+
+      .bill-info {
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #000;
+      }
+
+      .bill-line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 10pt;
+      }
+
+      .items-section {
+        margin-bottom: 10px;
+      }
+
+      .items-header {
+        font-weight: ;
+        border-bottom: 2px solid #000;
+        padding-bottom: 4px;
+        margin-bottom: 4px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 15pt;
+      }
+
+      .item-row {
+        margin-bottom: 3px;
+        font-size: 12pt;
+      }
+
+      .item-details {
+        display: flex;
+        justify-content: space-between;
+        margin-left: 2px;
+      }
+
+      .totals {
+        border-top: 2px solid #000;
+        padding-top: 10px;
+        margin-top: 10px;
+      }
+
+      .total-line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+        font-size: 14pt;
+      }
+
+      .final-total {
+        font-weight: ;
+        border-top: 1px solid #000;
+        padding-top: 6px;
+        margin-top: 6px;
+        font-size: 14pt;
+      }
+
+      .payment-info {
+        margin-top: 12px;
+        padding: 8px 0;
+        border-top: 1px dashed #000;
+        border-bottom: 1px dashed #000;
+      }
+
+      .payment-line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+        font-size: 15pt;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 15px;
+        padding-top: 8px;
+        border-top: 1px dashed #000;
+        font-size: 14pt;
+      }
+
+      .separator {
+        text-align: center;
+        margin: 8px 0;
+        font-size: 10pt;
+      }
+
+      .print-button {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin: 8px;
+        font-size: 12px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+      <button class="print-button" onclick="window.print()">Print Bill</button>
+      <button class="print-button" onclick="window.close()" style="background: #64748b;">Close</button>
+    </div>
+
+    <div class="header">
+      <div style="text-align: center; margin-bottom: 8px;">
+        <img src="/Logo W.png" alt="Restaurant Logo" style="max-width: 120px; height: auto; margin-bottom: 6px;" />
+      </div>
+      <div class="restaurant-name">RESTAURANTS BY RONAN</div>
+      <div class="restaurant-info">288/12L,Royal Gardens,Rajagiriya.</div>
+      <div class="restaurant-info">Tel: +94 777 66 9191</div>
+    </div>
+
+    <div class="bill-info">
+      <div class="bill-line">
+        <span>Bill: ${orderData.orderId}</span>
+        <span>Date: ${billDate}</span>
+      </div>
+      <div class="bill-line">
+        <span>Table: ${orderData.table === 'takeaway' || !orderData.table ? 'Takeaway' : orderData.table}</span>
+        <span>Time: ${billTime}</span>
+      </div>
+    </div>
+
+    <div class="items-section">
+      <div class="items-header">
+        <span>Item</span>
+        <span>Qty</span>
+        <span>Price</span>
+        <span>Total</span>
+      </div>
+
+      ${orderData.items.map(item => `
+        <div class="item-row">
+          <div>${item.dishName}</div>
+          <div class="item-details">
+            <span>${item.qty}</span>
+            <span>${item.price.toFixed(2)}</span>
+            <span>${(item.price * item.qty).toFixed(2)}</span>
           </div>
-          
-          <div class="footer">
-            <div>Thank you for dining with us!</div>
-            <div>Please visit again!</div>
-          </div>
-          
-          <script>
-            window.onload = function() { 
-              setTimeout(() => window.print(), 500); 
-            }
-          </script>
-        </body>
-      </html>
-    `;
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="totals">
+      <div class="total-line">
+        <span>Subtotal:</span>
+        <span>LKR ${orderData.subtotal.toFixed(2)}</span>
+      </div>
+
+      ${orderData.discount > 0 ? `
+        <div class="total-line">
+          <span>Discount ${orderData.discountType === 'percentage' ? `(${orderData.discount}%)` : '(Fixed)'}:</span>
+          <span>- LKR ${(orderData.discountType === 'percentage' ? (orderData.subtotal * orderData.discount) / 100 : orderData.discount).toFixed(2)}</span>
+        </div>
+        ${orderData.discountReason ? `
+          <div class="total-line" style="font-size: 13pt;">Reason: ${orderData.discountReason}</div>
+        ` : ''}
+      ` : ''}
+
+      <div class="total-line final-total">
+        <span>TOTAL:</span>
+        <span>LKR ${orderData.finalAmount.toFixed(2)}</span>
+      </div>
+    </div>
+
+    <div class="payment-info">
+      <div class="payment-line">
+        <span>Payment:</span>
+        <span>${orderData.paymentMethod.toUpperCase()}</span>
+      </div>
+      <div class="payment-line">
+        <span>Paid:</span>
+        <span>LKR ${orderData.amountPaid.toFixed(2)}</span>
+      </div>
+      ${orderData.balance > 0 ? `
+        <div class="payment-line">
+          <span>Change:</span>
+          <span>LKR ${orderData.balance.toFixed(2)}</span>
+        </div>
+      ` : ''}
+    </div>
+
+    <div class="separator">
+      --------------------------------
+    </div>
+
+    <div class="footer">
+      <div>Thank you for dining with us!</div>
+      <div>Please visit again!</div>
+      <div style="margin-top: 6px;">*****</div>
+    </div>
+
+    <script>
+      window.onload = function() {
+        setTimeout(() => window.print(), 500);
+      }
+    </script>
+  </body>
+</html>
+`;
+
+
+
+
+
+
+
 
     const printWindow = window.open('', '_blank');
     printWindow.document.write(billHTML);

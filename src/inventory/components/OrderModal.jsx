@@ -12,8 +12,17 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
   const [checkingInventory, setCheckingInventory] = useState(false);
   const [showInventoryDetails, setShowInventoryDetails] = useState(false);
   const [customerNotes, setCustomerNotes] = useState('');
+  const [selectedTable, setSelectedTable] = useState(tableNumber || 1);
 
   const categories = ['all', 'Main Dish', 'Beverage', 'Dessert', 'Side Dish', 'Other'];
+  const tableOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // Available tables
+  
+  // Update selected table when tableNumber prop changes
+  useEffect(() => {
+    if (tableNumber) {
+      setSelectedTable(tableNumber);
+    }
+  }, [tableNumber]);
   
   const filteredItems = (menuItems || []).filter(item => {
     if (!item || !item.name) return false;
@@ -107,13 +116,14 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
       return;
     }
 
-    onSubmit(selectedItems, customerNotes);
+    onSubmit(selectedItems, customerNotes, orderType === 'table' ? selectedTable : null);
     setSelectedItems([]);
     setSearchTerm('');
     setSelectedCategory('all');
     setInventoryCheck(null);
     setShowInventoryDetails(false);
     setCustomerNotes('');
+    setSelectedTable(1);
   };
 
   const resetForm = () => {
@@ -126,6 +136,7 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
     setSelectedCategory('all');
     setInventoryCheck(null);
     setShowInventoryDetails(false);
+    setSelectedTable(1);
   };
 
   useEffect(() => {
@@ -141,15 +152,38 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
       <div className="bg-slate-900 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-slate-700">
-          <div>
-            <h2 className="text-2xl font-bold text-white">New Order</h2>
-            <p className="text-slate-400 text-sm mt-1">
-              {orderType === 'takeaway' ? (
-                <span className="text-orange-400">Takeaway Order</span>
-              ) : (
-                <span className="text-blue-400">Table {tableNumber} Order</span>
-              )}
-            </p>
+          <div className="flex items-center space-x-4">
+            <div>
+              <h2 className="text-2xl font-bold text-white">New Order</h2>
+              <p className="text-slate-400 text-sm mt-1">
+                {orderType === 'takeaway' ? (
+                  <span className="text-orange-400">Takeaway Order</span>
+                ) : (
+                  <span className="text-blue-400">Table Order</span>
+                )}
+              </p>
+            </div>
+            {/* Table Selection Dropdown */}
+            {orderType === 'table' && (
+              <div className="flex items-center space-x-2">
+                <label className="text-slate-400 text-sm">Table:</label>
+                <select
+                  value={selectedTable}
+                  onChange={(e) => setSelectedTable(parseInt(e.target.value))}
+                  className="bg-slate-800 text-white px-3 py-2 rounded border border-slate-600 focus:border-blue-500 focus:outline-none"
+                  disabled={!!tableNumber} // Disable if table is pre-selected
+                >
+                  {tableOptions.map(table => (
+                    <option key={table} value={table}>
+                      Table {table}
+                    </option>
+                  ))}
+                </select>
+                {tableNumber && (
+                  <span className="text-xs text-slate-500">(pre-selected)</span>
+                )}
+              </div>
+            )}
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-white">
             <X size={24} />

@@ -1,32 +1,70 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import OrderCard from './OrderCard';
+import BeverageOrderCard from './BeverageOrderCard';
+import { Badge } from '../../components/ui/badge';
 import { api } from '../../lib/api';
 import { toast } from 'react-hot-toast';
-import { Clock, ChefHat, AlertTriangle } from 'lucide-react';
+import { Clock, ChefHat, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
+import kitchenSoundManager from '../utils/kitchenSound';
 
 const KitchenDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, pending, urgent
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [stats, setStats] = useState({
     pendingOrders: 0,
     completedToday: 0,
     averageTime: 0
   });
+  const isInitialLoad = useRef(true);
 
   useEffect(() => {
     fetchDashboardData();
+    
+    // Enable audio on first user interaction
+    const enableAudio = () => {
+      kitchenSoundManager.enableAudioOnUserInteraction();
+      document.removeEventListener('click', enableAudio);
+      document.removeEventListener('keydown', enableAudio);
+    };
+    
+    document.addEventListener('click', enableAudio);
+    document.addEventListener('keydown', enableAudio);
+    
     // Refresh data every 15 seconds for kitchen
     const interval = setInterval(fetchDashboardData, 15000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('click', enableAudio);
+      document.removeEventListener('keydown', enableAudio);
+    };
   }, []);
+
+  // Handle sound settings
+  useEffect(() => {
+    kitchenSoundManager.toggleSound(soundEnabled);
+  }, [soundEnabled]);
 
   const fetchDashboardData = async () => {
     try {
       const response = await api.get('/orders/dashboard');
       const { orders: ordersData, ...statsData } = response.data;
-      setOrders(ordersData || []);
+      const newOrders = ordersData || [];
+      
+      // Check for new orders and play sound notifications (skip on initial load)
+      if (!isInitialLoad.current && soundEnabled) {
+        kitchenSoundManager.checkForNewOrders(newOrders);
+      }
+      
+      setOrders(newOrders);
       setStats(statsData);
+      
+      // Mark that initial load is complete
+      if (isInitialLoad.current) {
+        isInitialLoad.current = false;
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
@@ -35,14 +73,21 @@ const KitchenDashboard = () => {
     }
   };
 
-  const handleMarkDone = async (orderId) => {
+  const handleMarkDone = async (orderId, itemId = null) => {
     try {
-      await api.patch(`/orders/${orderId}/done`);
-      toast.success('Order marked as done!');
+      if (itemId) {
+        // Mark individual item as done
+        await api.patch(`/orders/${orderId}/items/${itemId}/done`);
+        toast.success('Item marked as done!');
+      } else {
+        // Mark entire order as done (legacy for takeaway)
+        await api.patch(`/orders/${orderId}/done`);
+        toast.success('Order marked as done!');
+      }
       fetchDashboardData(); // Refresh data
     } catch (error) {
-      console.error('Error marking order as done:', error);
-      toast.error('Failed to mark order as done');
+      console.error('Error marking as done:', error);
+      toast.error('Failed to mark as done');
     }
   };
 
@@ -54,11 +99,28 @@ const KitchenDashboard = () => {
   };
 
   const isOrderUrgent = (createdAt) => {
-    return getOrderAge(createdAt) > 20; // More than 20 minutes
+    return getOrderAge(createdAt) >= 20; // 20 minutes or more
+  };
+
+  // Function to check if an item is pre-made (ready category)
+  const isPreMadeCategory = (category) => {
+    const preMadeCategories = ['Bakery', 'Pancakes - Savory', 'Pancakes - Sweets', 'Ice Cream'];
+    return preMadeCategories.includes(category);
   };
 
   const getFilteredOrders = () => {
-    let filtered = orders.filter(order => order.status === 'pending');
+    // For kitchen dashboard, show orders that have at least one pending item (excluding pre-made items)
+    let filtered = orders.filter(order => {
+      // For dine-in orders, check if any items are still pending (excluding pre-made)
+      if (order.orderType === 'dine-in') {
+        return order.items.some(item => {
+          const isPreMade = isPreMadeCategory(item.category);
+          return !isPreMade && item.status === 'pending';
+        });
+      }
+      // For takeaway orders, use overall order status
+      return order.status === 'pending';
+    });
     
     if (filter === 'urgent') {
       filtered = filtered.filter(order => isOrderUrgent(order.createdAt));
@@ -69,17 +131,31 @@ const KitchenDashboard = () => {
   };
 
   const getBeverageOrders = () => {
-    return orders.filter(order => 
-      order.status === 'pending' && 
-      order.items.some(item => item.category === 'Beverage')
-    );
+    return orders.filter(order => {
+      // Check if order has beverage items that are still pending
+      const hasPendingBeverages = order.items.some(item => 
+        (item.category === 'Beverage' || item.category === 'Beverages') && 
+        (order.orderType === 'takeaway' ? order.status === 'pending' : item.status === 'pending')
+      );
+      return hasPendingBeverages;
+    });
   };
 
   const getFoodOrders = () => {
-    return orders.filter(order => 
-      order.status === 'pending' && 
-      order.items.some(item => item.category !== 'Beverage')
-    );
+    return orders.filter(order => {
+      // Check if order has food items that are still pending (excluding pre-made and beverages)
+      const hasPendingFood = order.items.some(item => {
+        const isPreMade = isPreMadeCategory(item.category);
+        const isBeverage = item.category === 'Beverage' || item.category === 'Beverages';
+        return !isPreMade && !isBeverage && 
+        (order.orderType === 'takeaway' ? order.status === 'pending' : item.status === 'pending');
+      });
+      return hasPendingFood;
+    });
+  };
+
+  const getUrgentOrders = () => {
+    return getFilteredOrders().filter(order => isOrderUrgent(order.createdAt));
   };
 
   if (loading) {
@@ -93,6 +169,7 @@ const KitchenDashboard = () => {
   const filteredOrders = getFilteredOrders();
   const beverageOrders = getBeverageOrders();
   const foodOrders = getFoodOrders();
+  const urgentOrders = getUrgentOrders();
 
   return (
     <div className="min-h-screen bg-slate-900 p-6">
@@ -101,6 +178,20 @@ const KitchenDashboard = () => {
         <div className="flex items-center space-x-3 mb-4">
           <ChefHat className="text-orange-400" size={32} />
           <h1 className="text-3xl font-bold text-white">Kitchen Dashboard</h1>
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
+              soundEnabled 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                : 'bg-red-600 hover:bg-red-700 text-white'
+            }`}
+            title={soundEnabled ? 'Sound notifications ON' : 'Sound notifications OFF'}
+          >
+            {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+            <span className="text-sm font-medium">
+              {soundEnabled ? 'Sound ON' : 'Sound OFF'}
+            </span>
+          </button>
         </div>
         
         <div className="flex space-x-6 text-sm mb-4">
@@ -139,33 +230,36 @@ const KitchenDashboard = () => {
             }`}
           >
             <AlertTriangle size={16} />
-            <span>Urgent ({filteredOrders.filter(order => isOrderUrgent(order.createdAt)).length})</span>
+            <span>Urgent ({urgentOrders.length})</span>
           </button>
         </div>
       </div>
 
       {/* Priority Section - Urgent Orders */}
-      {filteredOrders.some(order => isOrderUrgent(order.createdAt)) && (
+      {urgentOrders.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-red-400 mb-4 flex items-center space-x-2">
-            <AlertTriangle size={20} />
-            <span>Urgent Orders (20+ minutes)</span>
+          <h2 className="text-2xl font-bold text-red-400 mb-4 flex items-center space-x-3 bg-red-900/20 border-2 border-red-500/50 rounded-lg p-4">
+            <AlertTriangle size={24} className="animate-pulse" />
+            <span>🚨 Urgent Orders (20+ minutes)</span>
+            <Badge className="bg-red-600 text-white font-bold px-3 py-1 text-sm">
+              {urgentOrders.length} orders
+            </Badge>
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredOrders
-              .filter(order => isOrderUrgent(order.createdAt))
-              .map(order => (
-                <div key={order._id} className="relative">
-                  <div className="absolute -top-2 -right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full z-10">
-                    {getOrderAge(order.createdAt)} min
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {urgentOrders.map(order => (
+              <div key={order._id} className="relative">
+                <div className="absolute -top-2 -right-2 bg-red-600 text-white text-xs px-3 py-1 rounded-full z-10 font-bold border-2 border-white shadow-lg animate-pulse">
+                  {getOrderAge(order.createdAt)} min
+                </div>
+                <div className="border-2 border-red-500/50 rounded-lg overflow-hidden shadow-lg hover:shadow-red-500/25 transition-all">
                   <OrderCard
                     order={order}
                     onDone={handleMarkDone}
                     variant="compact"
                   />
                 </div>
-              ))}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -174,9 +268,12 @@ const KitchenDashboard = () => {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         {/* Food Orders */}
         <div>
-          <h2 className="text-xl font-semibold text-white mb-4 flex items-center space-x-2">
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center space-x-2 bg-slate-800 p-3 rounded-lg">
             <span>🍽️</span>
             <span>Food Orders ({foodOrders.length})</span>
+            <Badge className="bg-orange-600 text-white font-bold px-2 py-1 text-xs">
+              Cooking Required
+            </Badge>
           </h2>
           <div className="space-y-4">
             {foodOrders.length === 0 ? (
@@ -186,7 +283,7 @@ const KitchenDashboard = () => {
             ) : (
               foodOrders.map(order => (
                 <div key={order._id} className="relative">
-                  <div className="absolute top-2 right-2 flex items-center space-x-1 text-xs text-slate-400 bg-slate-700 px-2 py-1 rounded">
+                  <div className="absolute top-2 right-2 flex items-center space-x-1 text-xs text-slate-400 bg-slate-700 px-2 py-1 rounded z-10">
                     <Clock size={12} />
                     <span>{getOrderAge(order.createdAt)} min ago</span>
                   </div>
@@ -202,9 +299,12 @@ const KitchenDashboard = () => {
 
         {/* Beverage Orders */}
         <div>
-          <h2 className="text-xl font-semibold text-white mb-4 flex items-center space-x-2">
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center space-x-2 bg-slate-800 p-3 rounded-lg">
             <span>🥤</span>
             <span>Beverage Orders ({beverageOrders.length})</span>
+            <Badge className="bg-blue-600 text-white font-bold px-2 py-1 text-xs">
+              Quick Serve
+            </Badge>
           </h2>
           <div className="space-y-4">
             {beverageOrders.length === 0 ? (
@@ -214,11 +314,11 @@ const KitchenDashboard = () => {
             ) : (
               beverageOrders.map(order => (
                 <div key={order._id} className="relative">
-                  <div className="absolute top-2 right-2 flex items-center space-x-1 text-xs text-slate-400 bg-slate-700 px-2 py-1 rounded">
+                  <div className="absolute top-2 right-2 flex items-center space-x-1 text-xs text-slate-400 bg-slate-700 px-2 py-1 rounded z-10">
                     <Clock size={12} />
                     <span>{getOrderAge(order.createdAt)} min ago</span>
                   </div>
-                  <OrderCard
+                  <BeverageOrderCard
                     order={order}
                     onDone={handleMarkDone}
                     variant="compact"

@@ -103,7 +103,7 @@ const CashierDashboard = () => {
     toast.success(`Viewing ${orders.length} takeaway order(s)`);
   };
 
-  const handlePlaceOrder = async (selectedItems, customerNotes = '') => {
+  const handlePlaceOrder = async (selectedItems, customerNotes = '', tableNumberOverride = null) => {
     try {
       const orderData = {
         orderType,
@@ -112,20 +112,34 @@ const CashierDashboard = () => {
         customerNotes: customerNotes || ''
       };
 
-      // Only include table for table orders
+      // Use table override if provided, otherwise use selectedTable for table orders
       if (orderType === 'table') {
-        orderData.table = selectedTable;
+        orderData.table = tableNumberOverride || selectedTable;
       }
 
-      await api.post('/orders', orderData);
-      toast.success(`${orderType === 'takeaway' ? 'Takeaway' : 'Table'} order placed successfully!`, {
-        icon: orderType === 'takeaway' ? '📦' : '🪑',
-        style: {
-          borderRadius: '10px',
-          background: '#1f2937',
-          color: '#fff',
-        },
-      });
+      const response = await api.post('/orders', orderData);
+      
+      // Show appropriate success message based on merge status
+      if (response.data.merged) {
+        toast.success(response.data.message || `Items added to existing Table ${orderData.table} session!`, {
+          icon: '🔥',
+          style: {
+            borderRadius: '10px',
+            background: '#1f2937',
+            color: '#fff',
+          },
+        });
+      } else {
+        toast.success(`${orderType === 'takeaway' ? 'Takeaway' : 'Table'} order placed successfully!`, {
+          icon: orderType === 'takeaway' ? '📦' : '🪑',
+          style: {
+            borderRadius: '10px',
+            background: '#1f2937',
+            color: '#fff',
+          },
+        });
+      }
+      
       setIsOrderModalOpen(false);
       setSelectedTable(null);
       setOrderType('table');
@@ -163,6 +177,44 @@ const CashierDashboard = () => {
   const handleBillComplete = () => {
     fetchDashboardData(); // Refresh data after billing
     setSelectedOrderForBilling(null);
+  };
+
+  const handleFinishSession = async (tableNumber) => {
+    try {
+      await api.patch(`/orders/finish/${tableNumber}`);
+      toast.success(`Table ${tableNumber} session finished and ready for billing!`, {
+        icon: '🧾',
+        style: {
+          borderRadius: '10px',
+          background: '#1f2937',
+          color: '#fff',
+        },
+      });
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      console.error('Error finishing table session:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to finish table session';
+      
+      if (error.response?.data?.pendingItems) {
+        const pendingItems = error.response.data.pendingItems;
+        toast.error(`Cannot finish session - ${pendingItems.length} items still in kitchen: ${pendingItems.map(item => item.dishName).join(', ')}`, {
+          duration: 8000,
+          style: {
+            borderRadius: '10px',
+            background: '#7f1d1d',
+            color: '#fff',
+          },
+        });
+      } else {
+        toast.error(errorMessage, {
+          style: {
+            borderRadius: '10px',
+            background: '#1f2937',
+            color: '#fff',
+          },
+        });
+      }
+    }
   };
 
   const handleMarkDone = async (orderId) => {
@@ -229,6 +281,7 @@ const CashierDashboard = () => {
               orders={getTableOrders(table)}
               onNewOrder={handleNewOrder}
               onViewDetails={handleViewDetails}
+              onFinishSession={handleFinishSession}
             />
           ))}
         </div>
@@ -337,10 +390,12 @@ const CashierDashboard = () => {
                 }`}>
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h3 className="font-semibold text-white">{order.orderId}</h3>
-                      <p className="text-sm text-slate-400">
-                        {order.orderType === 'takeaway' ? '📦 Takeaway' : `🪑 Table ${order.table}`}
-                      </p>
+
+                                  <h3 className="font-semibold text-white ">
+                        {order.orderType === 'takeaway' ? '📦 Takeaway' : ` Table ${order.table}`}
+                      </h3>
+                      <p className="font-semibold text-slate-400">{order.orderId}</p>
+
                       <p className="text-xs text-slate-500">
                         {order.placedBy} • {new Date(order.createdAt).toLocaleTimeString()}
                       </p>
@@ -403,6 +458,74 @@ const CashierDashboard = () => {
         )}
       </div>
 
+      {/* In-Progress Sessions Section */}
+      {orders.filter(order => order.status === 'in_progress').length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold text-white mb-4">🔥 Active Table Sessions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {orders
+              .filter(order => order.status === 'in_progress')
+              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+              .map(order => (
+                <div key={order._id} className="bg-slate-800 p-4 rounded-lg border-2 border-orange-500 bg-orange-900/20">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-semibold text-white">{order.orderId}</h3>
+                      <p className="text-sm text-orange-400">
+                        🪑 Table {order.table} • Active Session
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {order.placedBy} • {new Date(order.createdAt).toLocaleTimeString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-orange-900 text-orange-300">
+                        🔥 IN PROGRESS
+                      </span>
+                      <div className="text-orange-400 font-bold mt-1">
+                        LKR {formatCurrency(order.totalAmount)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-slate-400 mb-2">
+                    📝 {order.items?.length || 0} items:
+                  </div>
+                  <div className="text-xs text-slate-300 mb-3 max-h-16 overflow-y-auto">
+                    {order.items?.map((item, idx) => (
+                      <div key={idx} className="flex justify-between">
+                        <span>{item.qty}x {item.dishName}</span>
+                        <span>LKR {((item.qty || 0) * (item.price || 0)).toFixed(0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="flex justify-between items-center text-xs text-slate-500 mb-3">
+                    <span>⏱️ {Math.floor((new Date() - new Date(order.createdAt)) / (1000 * 60))} min ago</span>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex space-x-2 mt-3">
+                    <button
+                      onClick={() => handleNewOrder(order.table)}
+                      className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded text-xs font-medium transition-colors"
+                    >
+                      + Add Items
+                    </button>
+                    <button
+                      onClick={() => handleFinishSession(order.table)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded text-xs font-medium transition-colors"
+                    >
+                      ✓ Finish
+                    </button>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions for Active Orders */}
       {stats.activeOrders > 0 && (
         <div className="mt-8">
@@ -414,11 +537,12 @@ const CashierDashboard = () => {
               .map(order => (
                 <div key={order._id} className="bg-slate-800 p-4 rounded-lg border border-green-500">
                   <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="font-semibold text-white">{order.orderId}</h3>
-                      <p className="text-sm text-slate-400">
+                    <div>                
+                         <h3 className="font-semibold text-white ">
                         {order.table === 'takeaway' ? 'Takeaway' : `Table ${order.table}`}
-                      </p>
+                      </h3>
+                      <p className="font-semibold text-slate-400">{order.orderId}</p>
+   
                     </div>
                     <span className="text-green-400 font-bold">LKR {formatCurrency(order.totalAmount)}</span>
                   </div>
