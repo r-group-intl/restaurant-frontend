@@ -51,7 +51,7 @@ const BeverageOrderCard = ({ order, onDone, variant = 'compact' }) => {
             🕒 {new Date(order.createdAt).toLocaleTimeString()}
           </div>
           <Badge className="bg-yellow-600 text-white font-bold px-2 py-1 text-xs">
-            {beverageItems.length} drinks
+            {beverageItems?.length || 0} drinks
           </Badge>
         </div>
       </div>
@@ -99,7 +99,7 @@ const BeverageOrderCard = ({ order, onDone, variant = 'compact' }) => {
                 {/* Quantity and Price */}
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-blue-200 font-bold text-lg">
-                    Qty: {item.qty}x 
+                    Qty: {Number(item.qty) || 0}x 
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-blue-200 font-bold">
@@ -165,7 +165,7 @@ const BeverageOrderCard = ({ order, onDone, variant = 'compact' }) => {
             {getTableDisplay(order)} - KOT: {order.orderId}
           </span>
           <span className="text-blue-200 font-semibold">
-            Total: {beverageItems.reduce((sum, item) => sum + item.qty, 0)} drinks
+            Total: {beverageItems.reduce((sum, item) => sum + (Number(item.qty) || 0), 0)} drinks
           </span>
         </div>
       </div>

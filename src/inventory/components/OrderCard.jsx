@@ -154,7 +154,7 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
                   {/* Quantity and Price */}
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-300 font-medium">
-                      {item.qty}x 
+                      {Number(item.qty) || 0}x 
                     </span>
                     <div className="flex items-center gap-2">
                       <span className="text-slate-300 font-bold">

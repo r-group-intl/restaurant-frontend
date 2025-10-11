@@ -95,7 +95,7 @@ const KitchenDashboard = () => {
     const now = new Date();
     const orderTime = new Date(createdAt);
     const diffInMinutes = Math.floor((now - orderTime) / (1000 * 60));
-    return diffInMinutes;
+    return isNaN(diffInMinutes) ? 0 : Math.max(0, diffInMinutes);
   };
 
   const isOrderUrgent = (createdAt) => {
@@ -197,15 +197,15 @@ const KitchenDashboard = () => {
         <div className="flex space-x-6 text-sm mb-4">
           <div className="bg-slate-800 px-4 py-2 rounded">
             <span className="text-slate-400">Pending Orders: </span>
-            <span className="text-orange-400 font-semibold">{stats.pendingOrders || 0}</span>
+            <span className="text-orange-400 font-semibold">{Number(stats.pendingOrders) || 0}</span>
           </div>
           <div className="bg-slate-800 px-4 py-2 rounded">
             <span className="text-slate-400">Completed Today: </span>
-            <span className="text-green-400 font-semibold">{stats.completedToday || 0}</span>
+            <span className="text-green-400 font-semibold">{Number(stats.completedToday) || 0}</span>
           </div>
           <div className="bg-slate-800 px-4 py-2 rounded">
             <span className="text-slate-400">Avg. Time: </span>
-            <span className="text-blue-400 font-semibold">{stats.averageTime || 0} min</span>
+            <span className="text-blue-400 font-semibold">{Number(stats.averageTime) || 0} min</span>
           </div>
         </div>
 
@@ -219,7 +219,7 @@ const KitchenDashboard = () => {
                 : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
             }`}
           >
-            All Orders ({filteredOrders.length})
+            All Orders ({filteredOrders?.length || 0})
           </button>
           <button
             onClick={() => setFilter('urgent')}
@@ -230,19 +230,19 @@ const KitchenDashboard = () => {
             }`}
           >
             <AlertTriangle size={16} />
-            <span>Urgent ({urgentOrders.length})</span>
+            <span>Urgent ({urgentOrders?.length || 0})</span>
           </button>
         </div>
       </div>
 
       {/* Priority Section - Urgent Orders */}
-      {urgentOrders.length > 0 && (
+      {(urgentOrders?.length || 0) > 0 && (
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-red-400 mb-4 flex items-center space-x-3 bg-red-900/20 border-2 border-red-500/50 rounded-lg p-4">
             <AlertTriangle size={24} className="animate-pulse" />
             <span>🚨 Urgent Orders (20+ minutes)</span>
             <Badge className="bg-red-600 text-white font-bold px-3 py-1 text-sm">
-              {urgentOrders.length} orders
+              {urgentOrders?.length || 0} orders
             </Badge>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -270,13 +270,13 @@ const KitchenDashboard = () => {
         <div>
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center space-x-2 bg-slate-800 p-3 rounded-lg">
             <span>🍽️</span>
-            <span>Food Orders ({foodOrders.length})</span>
+            <span>Food Orders ({foodOrders?.length || 0})</span>
             <Badge className="bg-orange-600 text-white font-bold px-2 py-1 text-xs">
               Cooking Required
             </Badge>
           </h2>
           <div className="space-y-4">
-            {foodOrders.length === 0 ? (
+            {(foodOrders?.length || 0) === 0 ? (
               <div className="bg-slate-800 p-8 rounded-lg text-center">
                 <p className="text-slate-500">No food orders pending</p>
               </div>
@@ -301,13 +301,13 @@ const KitchenDashboard = () => {
         <div>
           <h2 className="text-xl font-semibold text-white mb-4 flex items-center space-x-2 bg-slate-800 p-3 rounded-lg">
             <span>🥤</span>
-            <span>Beverage Orders ({beverageOrders.length})</span>
+            <span>Beverage Orders ({beverageOrders?.length || 0})</span>
             <Badge className="bg-blue-600 text-white font-bold px-2 py-1 text-xs">
               Quick Serve
             </Badge>
           </h2>
           <div className="space-y-4">
-            {beverageOrders.length === 0 ? (
+            {(beverageOrders?.length || 0) === 0 ? (
               <div className="bg-slate-800 p-8 rounded-lg text-center">
                 <p className="text-slate-500">No beverage orders pending</p>
               </div>
@@ -331,7 +331,7 @@ const KitchenDashboard = () => {
       </div>
 
       {/* No Orders State */}
-      {filteredOrders.length === 0 && (
+      {(filteredOrders?.length || 0) === 0 && (
         <div className="text-center py-16">
           <ChefHat className="mx-auto mb-4 text-slate-600" size={64} />
           <h3 className="text-xl font-semibold text-slate-400 mb-2">All caught up!</h3>
