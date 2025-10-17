@@ -4,7 +4,7 @@ import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import { useDomain } from '../context/DomainContext';
-import { ShoppingCart, Edit, Trash2 } from "lucide-react";
+import { ShoppingCart, Edit, Trash2, RefreshCw } from "lucide-react";
 
 export default function Inventory() {
   const { domain } = useDomain();
@@ -17,8 +17,13 @@ export default function Inventory() {
   const [suppliers, setSuppliers] = useState([]);
   const [showItemModal, setShowItemModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [purchasingItem, setPurchasingItem] = useState(null);
+  const [selectedItemBatches, setSelectedItemBatches] = useState([]);
+  const [batchAnalytics, setBatchAnalytics] = useState(null);
+  const [expiredBatches, setExpiredBatches] = useState([]);
+  const [nearExpiryBatches, setNearExpiryBatches] = useState([]);
   const [inventoryValue, setInventoryValue] = useState(null);
   
   const [itemFormData, setItemFormData] = useState({
@@ -31,28 +36,41 @@ export default function Inventory() {
     maxOrderLevel: 0,
     lastPurchasedQty: 0,
     categoryId: '',
-    supplierId: ''
+    supplierId: '',
+    // Batch tracking fields
+    trackExpiry: false,
+    defaultShelfLife: 7, // days
+    expiryDate: '',
+    batchNumber: ''
   });
 
   const [purchaseFormData, setPurchaseFormData] = useState({
     quantity: 0,
     unitPrice: 0,
     supplier: '',
-    notes: ''
+    notes: '',
+    expiryDate: '',
+    batchNumber: ''
   });
 
   const loadData = async () => {
     try {
-      const [itemsRes, categoriesRes, suppliersRes, valueRes] = await Promise.all([
+      const [itemsRes, categoriesRes, suppliersRes, valueRes, batchAnalyticsRes, expiredRes, nearExpiryRes] = await Promise.all([
         api.get('/items'),
         api.get('/categories'),
         api.get('/suppliers'),
-        api.get('/analytics/inventory/value')
+        api.get('/analytics/inventory/value'),
+        api.get('/batches/analytics'),
+        api.get('/batches/expired'),
+        api.get('/batches/near-expiry')
       ]);
       setItems(itemsRes.data);
       setCategories(categoriesRes.data);
       setSuppliers(suppliersRes.data);
       setInventoryValue(valueRes.data);
+      setBatchAnalytics(batchAnalyticsRes.data);
+      setExpiredBatches(expiredRes.data);
+      setNearExpiryBatches(nearExpiryRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -60,6 +78,15 @@ export default function Inventory() {
 
   useEffect(() => {
     loadData();
+  }, [domain]);
+
+  // Real-time updates - refresh every 30 seconds to show KOT deductions
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadData();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
   }, [domain]);
 
   // Filter items based on search term, category, and stock status
@@ -110,7 +137,11 @@ export default function Inventory() {
         maxOrderLevel: 0,
         lastPurchasedQty: 0,
         categoryId: '',
-        supplierId: ''
+        supplierId: '',
+        trackExpiry: false,
+        defaultShelfLife: 7,
+        expiryDate: '',
+        batchNumber: ''
       });
       loadData();
     } catch (error) {
@@ -122,14 +153,33 @@ export default function Inventory() {
     e.preventDefault();
     try {
       // Create purchase transaction
-      await api.post('/transactions', {
+      const transactionData = {
         item: purchasingItem.name,
         type: 'purchase',
         quantity: parseFloat(purchaseFormData.quantity),
         unitPrice: parseFloat(purchaseFormData.unitPrice),
         supplier: purchaseFormData.supplier,
-        notes: purchaseFormData.notes || `Purchase - ${purchasingItem.name}`
-      });
+        notes: purchaseFormData.notes || `Purchase - ${purchasingItem.name}`,
+        expiryDate: purchaseFormData.expiryDate,
+        batchNumber: purchaseFormData.batchNumber
+      };
+
+      await api.post('/transactions', transactionData);
+
+      // If item has expiry tracking enabled or expiry date provided, create batch
+      if (purchaseFormData.expiryDate || purchasingItem.trackExpiry) {
+        const batchData = {
+          itemId: purchasingItem._id,
+          quantity: parseFloat(purchaseFormData.quantity),
+          expiryDate: purchaseFormData.expiryDate || new Date(Date.now() + (purchasingItem.defaultShelfLife || 7) * 24 * 60 * 60 * 1000),
+          unitPrice: parseFloat(purchaseFormData.unitPrice),
+          supplierId: purchaseFormData.supplier,
+          batchNumber: purchaseFormData.batchNumber,
+          notes: purchaseFormData.notes
+        };
+
+        await api.post('/batches', batchData);
+      }
       
       setShowPurchaseModal(false);
       setPurchasingItem(null);
@@ -137,7 +187,9 @@ export default function Inventory() {
         quantity: 0,
         unitPrice: 0,
         supplier: '',
-        notes: ''
+        notes: '',
+        expiryDate: '',
+        batchNumber: ''
       });
       loadData();
       alert('Purchase recorded successfully!');
@@ -159,20 +211,63 @@ export default function Inventory() {
       maxOrderLevel: item.maxOrderLevel || 0,
       lastPurchasedQty: item.lastPurchasedQty || 0,
       categoryId: item.categoryId?._id || '',
-      supplierId: item.supplierId?._id || ''
+      supplierId: item.supplierId?._id || '',
+      trackExpiry: item.trackExpiry || false,
+      defaultShelfLife: item.defaultShelfLife || 7,
+      expiryDate: '',
+      batchNumber: ''
     });
     setShowItemModal(true);
   };
 
   const handleBuyItem = (item) => {
     setPurchasingItem(item);
+    
+    // Calculate default expiry date if item has default shelf life
+    let defaultExpiryDate = '';
+    if (item.trackExpiry || item.defaultShelfLife) {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + (item.defaultShelfLife || 7));
+      defaultExpiryDate = futureDate.toISOString().split('T')[0];
+    }
+    
     setPurchaseFormData({
       quantity: 0,
       unitPrice: 0,
       supplier: item.supplierId?._id || '',
-      notes: ''
+      notes: '',
+      expiryDate: defaultExpiryDate,
+      batchNumber: ''
     });
     setShowPurchaseModal(true);
+  };
+
+  const handleViewBatches = async (item) => {
+    try {
+      const response = await api.get(`/batches/item/${item._id}`);
+      setSelectedItemBatches(response.data);
+      setShowBatchModal(true);
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+      alert('Error loading batches');
+    }
+  };
+
+  const handleMarkExpiredAsWastage = async () => {
+    if (confirm('Are you sure you want to mark all expired batches as wastage? This action cannot be undone.')) {
+      try {
+        const response = await api.post('/batches/mark-expired-wastage', {
+          userId: null, // Add user context if available
+          role: 'admin'
+        });
+        
+        alert(`Successfully marked ${response.data.expiredCount} expired batches as wastage`);
+        loadData();
+      } catch (error) {
+        console.error('Error marking expired batches:', error);
+        alert('Error processing expired batches');
+      }
+    }
   };
 
   const handleDeleteItem = async (id) => {
@@ -202,9 +297,26 @@ export default function Inventory() {
       key: 'stock', 
       label: 'Current Stock',
       render: (_, item) => (
-        <span className={`${item.quantity <= (item.reorderLevel || 0) ? 'text-red-400' : 'text-white'}`}>
-          {item.quantity} {item.unit}
-        </span>
+        <div className="flex flex-col">
+          <span className={`${item.quantity <= (item.reorderLevel || 0) ? 'text-red-400' : 'text-white'}`}>
+            {item.quantity} {item.unit}
+          </span>
+          {item.trackExpiry && (
+            <div className="text-xs text-slate-400">
+              {item.totalBatches > 0 ? `${item.totalBatches} batches` : 'No batches'}
+              {item.nearExpiryCount > 0 && (
+                <span className="text-yellow-400 ml-1">
+                  ({item.nearExpiryCount} near expiry)
+                </span>
+              )}
+              {item.expiredCount > 0 && (
+                <span className="text-red-400 ml-1">
+                  ({item.expiredCount} expired)
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       )
     },
     { 
@@ -221,48 +333,58 @@ export default function Inventory() {
         </span>
       )
     },
+
     { 
       key: 'reorderLevel', 
       label: 'Reorder Level',
       render: (_, item) => `${item.reorderLevel || 0} ${item.unit}`
     },
     { 
-      key: 'maxOrderLevel', 
-      label: 'Max Order Level',
-      render: (_, item) => `${item.maxOrderLevel || 0} ${item.unit}`
-    },
-    { 
-      key: 'lastPurchased', 
-      label: 'Last Purchased',
-      render: (_, item) => `${item.lastPurchasedQty || 0} ${item.unit}`
+      key: 'lastPurchasedQty', 
+      label: 'Last Purchased Qty',
+      render: (_, item) => (
+        <span className="text-blue-400">
+          {item.lastPurchasedQty || 0} {item.unit}
+        </span>
+      )
     },
 {
   key: "actions",
   label: "Actions",
   render: (_, item) => (
-    <div className="flex space-x-2">
+    <div className="flex space-x-1">
       <button
         onClick={() => handleBuyItem(item)}
-        className="p-2 bg-green-600 text-white rounded hover:bg-green-700"
-        title="Buy"
+        className="p-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
+        title="Purchase"
       >
-        <ShoppingCart className="w-4 h-4" />
+        <ShoppingCart className="w-3 h-3" />
       </button>
+
+      {item.trackExpiry && (
+        <button
+          onClick={() => handleViewBatches(item)}
+          className="p-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
+          title="View Batches"
+        >
+          📦
+        </button>
+      )}
 
       <button
         onClick={() => handleEditItem(item)}
-        className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
         title="Edit"
       >
-        <Edit className="w-4 h-4" />
+        <Edit className="w-3 h-3" />
       </button>
 
       <button
         onClick={() => handleDeleteItem(item._id)}
-        className="p-2 bg-red-600 text-white rounded hover:bg-red-700"
+        className="p-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
         title="Delete"
       >
-        <Trash2 className="w-4 h-4" />
+        <Trash2 className="w-3 h-3" />
       </button>
     </div>
   ),
@@ -276,16 +398,26 @@ export default function Inventory() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Inventory Management</h1>
-        <button 
-          onClick={() => setShowItemModal(true)}
-          className="bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700"
-        >
-          Add New Item
-        </button>
+        <div className="flex space-x-2">
+          <button 
+            onClick={loadData}
+            className="bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-700 flex items-center space-x-2"
+            title="Refresh inventory data"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Refresh</span>
+          </button>
+          <button 
+            onClick={() => setShowItemModal(true)}
+            className="bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700"
+          >
+            Add New Item
+          </button>
+        </div>
       </div>
 
       {/* Analytics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <div className="text-slate-400 text-sm">Total Items</div>
           <div className="text-2xl font-bold">{inventoryValue?.totalItems || 0}</div>
@@ -299,8 +431,14 @@ export default function Inventory() {
           <div className="text-2xl font-bold text-red-400">{lowStockItems.length}</div>
         </Card>
         <Card>
-          <div className="text-slate-400 text-sm">Categories</div>
-          <div className="text-2xl font-bold">{categories.length}</div>
+          <div className="text-slate-400 text-sm">Near Expiry</div>
+          <div className="text-2xl font-bold text-yellow-400">{nearExpiryBatches.length}</div>
+          <div className="text-xs text-slate-400">batches</div>
+        </Card>
+        <Card>
+          <div className="text-slate-400 text-sm">Expired</div>
+          <div className="text-2xl font-bold text-red-400">{expiredBatches.length}</div>
+          <div className="text-xs text-slate-400">batches</div>
         </Card>
       </div>
 
@@ -357,6 +495,65 @@ export default function Inventory() {
           )}
         </div>
       </Card>
+
+      {/* Expiry Alerts */}
+      {(expiredBatches.length > 0 || nearExpiryBatches.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Expired Batches */}
+          {expiredBatches.length > 0 && (
+            <Card title="🚨 Expired Batches">
+              <div className="space-y-2 mb-4">
+                {expiredBatches.slice(0, 5).map((batch) => (
+                  <div key={batch._id} className="p-3 rounded-md bg-red-500/10 border border-red-500/20">
+                    <div className="font-medium text-red-400">{batch.itemId?.name}</div>
+                    <div className="text-sm text-slate-300">
+                      Batch: {batch.batchNumber} • Qty: {batch.quantity} {batch.itemId?.unit}
+                    </div>
+                    <div className="text-xs text-red-300">
+                      Expired: {new Date(batch.expiryDate).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+                {expiredBatches.length > 5 && (
+                  <div className="text-sm text-slate-400">
+                    +{expiredBatches.length - 5} more expired batches
+                  </div>
+                )}
+              </div>
+              <button 
+                onClick={handleMarkExpiredAsWastage}
+                className="w-full px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+              >
+                Mark All as Wastage
+              </button>
+            </Card>
+          )}
+
+          {/* Near Expiry Batches */}
+          {nearExpiryBatches.length > 0 && (
+            <Card title="⚠️ Near Expiry Batches">
+              <div className="space-y-2">
+                {nearExpiryBatches.slice(0, 5).map((batch) => (
+                  <div key={batch._id} className="p-3 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="font-medium text-yellow-400">{batch.itemId?.name}</div>
+                    <div className="text-sm text-slate-300">
+                      Batch: {batch.batchNumber} • Qty: {batch.quantity} {batch.itemId?.unit}
+                    </div>
+                    <div className="text-xs text-yellow-300">
+                      Expires: {new Date(batch.expiryDate).toLocaleDateString()}
+                    </div>
+                  </div>
+                ))}
+                {nearExpiryBatches.length > 5 && (
+                  <div className="text-sm text-slate-400">
+                    +{nearExpiryBatches.length - 5} more batches expiring soon
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Low Stock Alerts */}
       {lowStockItems.length > 0 && (
@@ -543,6 +740,50 @@ export default function Inventory() {
             </div>
           )}
 
+          {/* Expiry Tracking */}
+          <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
+            <h4 className="text-sm font-medium text-slate-300 mb-3">Expiry Tracking</h4>
+            
+            <div className="flex items-center space-x-4 mb-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  className="mr-2"
+                  checked={itemFormData.trackExpiry}
+                  onChange={(e) => setItemFormData({...itemFormData, trackExpiry: e.target.checked})}
+                />
+                <span className="text-sm text-slate-300">Track expiry dates for this item</span>
+              </label>
+            </div>
+
+            {itemFormData.trackExpiry && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Default Shelf Life (days)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                    value={itemFormData.defaultShelfLife}
+                    onChange={(e) => setItemFormData({...itemFormData, defaultShelfLife: parseInt(e.target.value) || 1})}
+                  />
+                </div>
+                
+                {!editingItem && itemFormData.quantity > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Initial Expiry Date</label>
+                    <input
+                      type="date"
+                      className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                      value={itemFormData.expiryDate}
+                      onChange={(e) => setItemFormData({...itemFormData, expiryDate: e.target.value})}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end space-x-2">
             <button 
               type="button"
@@ -647,6 +888,39 @@ export default function Inventory() {
             />
           </div>
 
+          {/* Expiry Date Section */}
+          <div className="p-3 bg-slate-800 rounded border border-slate-700">
+            <h4 className="text-sm font-medium text-slate-300 mb-2">Batch Information</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Expiry Date</label>
+                <input
+                  type="date"
+                  className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                  value={purchaseFormData.expiryDate}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, expiryDate: e.target.value})}
+                />
+                {purchasingItem?.defaultShelfLife && (
+                  <div className="text-xs text-slate-400 mt-1">
+                    Default shelf life: {purchasingItem.defaultShelfLife} days
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Batch Number (Optional)</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                  placeholder="Auto-generated if empty"
+                  value={purchaseFormData.batchNumber}
+                  onChange={(e) => setPurchaseFormData({...purchaseFormData, batchNumber: e.target.value})}
+                />
+              </div>
+            </div>
+          </div>
+
           {purchaseFormData.quantity > 0 && purchaseFormData.unitPrice > 0 && (
             <div className="p-3 bg-primary-600/10 border border-primary-600/20 rounded">
               <div className="text-sm text-slate-400">Total Cost</div>
@@ -666,7 +940,9 @@ export default function Inventory() {
                   quantity: 0,
                   unitPrice: 0,
                   supplier: '',
-                  notes: ''
+                  notes: '',
+                  expiryDate: '',
+                  batchNumber: ''
                 });
               }}
               className="px-4 py-2 border border-slate-600 rounded text-slate-300 hover:bg-slate-800"
@@ -681,6 +957,134 @@ export default function Inventory() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Batch View Modal */}
+      <Modal 
+        isOpen={showBatchModal} 
+        onClose={() => {
+          setShowBatchModal(false);
+          setSelectedItemBatches([]);
+        }}
+        title="Batch Information"
+      >
+        <div className="space-y-4">
+          {selectedItemBatches.length > 0 ? (
+            <>
+              <div className="text-sm text-slate-400 mb-4">
+                Showing {selectedItemBatches.length} active batches (FIFO order)
+              </div>
+              
+              <div className="space-y-3">
+                {selectedItemBatches.map((batch, index) => {
+                  const daysUntilExpiry = Math.ceil((new Date(batch.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+                  const isExpired = daysUntilExpiry <= 0;
+                  const isNearExpiry = daysUntilExpiry > 0 && daysUntilExpiry <= 7;
+                  
+                  return (
+                    <div 
+                      key={batch._id} 
+                      className={`p-3 rounded border ${
+                        isExpired ? 'bg-red-500/10 border-red-500/20' :
+                        isNearExpiry ? 'bg-yellow-500/10 border-yellow-500/20' :
+                        'bg-slate-800 border-slate-700'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium">#{index + 1}</span>
+                            <span className="text-sm text-slate-400">Batch: {batch.batchNumber}</span>
+                            {isExpired && <span className="text-xs bg-red-600 text-white px-2 py-1 rounded">EXPIRED</span>}
+                            {isNearExpiry && <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded">NEAR EXPIRY</span>}
+                          </div>
+                          
+                          <div className="mt-2 grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="text-slate-400">Quantity:</span>
+                              <span className="ml-1 font-medium">{batch.quantity} {batch.itemId?.unit || 'units'}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400">Purchase Date:</span>
+                              <span className="ml-1">{new Date(batch.purchaseDate).toLocaleDateString()}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400">Expiry Date:</span>
+                              <span className={`ml-1 ${isExpired ? 'text-red-400' : isNearExpiry ? 'text-yellow-400' : ''}`}>
+                                {new Date(batch.expiryDate).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400">Unit Price:</span>
+                              <span className="ml-1">LKR {batch.unitPrice.toFixed(2)}</span>
+                            </div>
+                          </div>
+                          
+                          {batch.supplierId && (
+                            <div className="mt-2 text-sm">
+                              <span className="text-slate-400">Supplier:</span>
+                              <span className="ml-1">{batch.supplierId.name}</span>
+                            </div>
+                          )}
+                          
+                          {batch.notes && (
+                            <div className="mt-2 text-sm">
+                              <span className="text-slate-400">Notes:</span>
+                              <span className="ml-1 text-slate-300">{batch.notes}</span>
+                            </div>
+                          )}
+                          
+                          <div className="mt-2 text-xs text-slate-500">
+                            {isExpired ? 
+                              `Expired ${Math.abs(daysUntilExpiry)} days ago` :
+                              `${daysUntilExpiry} days until expiry`
+                            }
+                          </div>
+                        </div>
+                        
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-green-400">
+                            LKR {(batch.quantity * batch.unitPrice).toFixed(2)}
+                          </div>
+                          <div className="text-xs text-slate-400">Total Value</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="mt-4 p-3 bg-slate-800 rounded">
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-slate-400">Total Quantity:</span>
+                    <div className="font-medium">{selectedItemBatches.reduce((sum, b) => sum + b.quantity, 0)} units</div>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Total Value:</span>
+                    <div className="font-medium text-green-400">
+                      LKR {selectedItemBatches.reduce((sum, b) => sum + (b.quantity * b.unitPrice), 0).toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Avg. Price:</span>
+                    <div className="font-medium">
+                      LKR {(selectedItemBatches.reduce((sum, b) => sum + (b.quantity * b.unitPrice), 0) / 
+                            selectedItemBatches.reduce((sum, b) => sum + b.quantity, 0)).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-slate-400">No active batches found for this item</div>
+              <div className="text-sm text-slate-500 mt-2">
+                Enable expiry tracking and make a purchase to create batches
+              </div>
+            </div>
+          )}
+        </div>
       </Modal>
     </div>
   );

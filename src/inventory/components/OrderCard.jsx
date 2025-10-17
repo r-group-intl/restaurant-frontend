@@ -53,19 +53,19 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
   // Function to get category display name and emoji
   const getCategoryDisplay = (category) => {
     const categoryMap = {
-      'Bakery': { emoji: '🥖', name: 'Bakery' },
-      'Pancakes - Savory': { emoji: '🥞', name: 'Pancake-Savory' },
-      'Pancakes - Sweets': { emoji: '🧇', name: 'Pancake-Sweet' },
-      'Beverage': { emoji: '🥤', name: 'Beverage' },
-      'Beverages': { emoji: '🥤', name: 'Beverage' },
-      'Main Dish': { emoji: '🍽️', name: 'Main Dish' },
-      'Mains': { emoji: '🍽️', name: 'Main Dish' },
-      'Soups': { emoji: '🍲', name: 'Soup' },
-      'Salads': { emoji: '🥗', name: 'Salad' },
-      'Desserts': { emoji: '🍰', name: 'Dessert' },
-      'Dessert': { emoji: '🍰', name: 'Dessert' },
-      'Sides': { emoji: '🍟', name: 'Side' },
-      'Side Dish': { emoji: '🍟', name: 'Side' }
+      'Bakery': { emoji: '', name: 'Bakery' },
+      'Pancakes - Savory': { emoji: '', name: 'Pancake-Savory' },
+      'Pancakes - Sweets': { emoji: '', name: 'Pancake-Sweet' },
+      'Beverage': { emoji: '', name: 'Beverage' },
+      'Beverages': { emoji: '', name: 'Beverage' },
+      'Main Dish': { emoji: '', name: 'Main Dish' },
+      'Mains': { emoji: '', name: 'Main Dish' },
+      'Soups': { emoji: '', name: 'Soup' },
+      'Salads': { emoji: '', name: 'Salad' },
+      'Desserts': { emoji: '', name: 'Dessert' },
+      'Dessert': { emoji: '', name: 'Dessert' },
+      'Sides': { emoji: '', name: 'Side' },
+      'Side Dish': { emoji: '', name: 'Side' }
     };
     
     return categoryMap[category] || { emoji: '🍽️', name: category || 'Other' };
