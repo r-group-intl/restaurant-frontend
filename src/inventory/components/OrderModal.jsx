@@ -3,8 +3,9 @@ import { X, AlertTriangle, CheckCircle, MessageSquare } from 'lucide-react';
 import { api } from '../../lib/api';
 import { toast } from 'react-hot-toast';
 import { getImageUrl } from '../../utils/imageUtils';
+import CustomerDetails from './CustomerDetails';
 
-const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'table', tableNumber = null }) => {
+const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'dine-in', tableNumber = null }) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -13,9 +14,22 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
   const [showInventoryDetails, setShowInventoryDetails] = useState(false);
   const [customerNotes, setCustomerNotes] = useState('');
   const [selectedTable, setSelectedTable] = useState(tableNumber || 1);
+  const [customerDetails, setCustomerDetails] = useState({
+    customerName: '',
+    customerMobile: '',
+    orderType: orderType || 'dine-in'
+  });
 
   const categories = ['all', 'Main Dish', 'Beverage', 'Dessert', 'Side Dish', 'Other'];
   const tableOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]; // Available tables
+  
+  // Update customer details when orderType prop changes
+  useEffect(() => {
+    setCustomerDetails(prev => ({
+      ...prev,
+      orderType: orderType || 'dine-in'
+    }));
+  }, [orderType]);
   
   // Update selected table when tableNumber prop changes
   useEffect(() => {
@@ -23,6 +37,17 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
       setSelectedTable(tableNumber);
     }
   }, [tableNumber]);
+
+  const handleCustomerDetailsChange = (details) => {
+    setCustomerDetails(details);
+  };
+
+  const handleOrderTypeChange = (newOrderType) => {
+    setCustomerDetails(prev => ({
+      ...prev,
+      orderType: newOrderType
+    }));
+  };
   
   const filteredItems = (menuItems || []).filter(item => {
     if (!item || !item.name) return false;
@@ -116,14 +141,16 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
       return;
     }
 
-    onSubmit(selectedItems, customerNotes, orderType === 'table' ? selectedTable : null);
-    setSelectedItems([]);
-    setSearchTerm('');
-    setSelectedCategory('all');
-    setInventoryCheck(null);
-    setShowInventoryDetails(false);
-    setCustomerNotes('');
-    setSelectedTable(1);
+    // Prepare order data with customer details
+    const orderData = {
+      items: selectedItems,
+      customerNotes,
+      customerDetails,
+      tableNumber: customerDetails.orderType === 'dine-in' ? selectedTable : null
+    };
+
+    onSubmit(orderData);
+    resetForm();
   };
 
   const resetForm = () => {
@@ -133,10 +160,12 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
     setInventoryCheck(null);
     setShowInventoryDetails(false);
     setCustomerNotes('');
-    setSelectedCategory('all');
-    setInventoryCheck(null);
-    setShowInventoryDetails(false);
     setSelectedTable(1);
+    setCustomerDetails({
+      customerName: '',
+      customerMobile: '',
+      orderType: orderType || 'dine-in'
+    });
   };
 
   useEffect(() => {
@@ -156,15 +185,21 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
             <div>
               <h2 className="text-2xl font-bold text-white">New Order</h2>
               <p className="text-slate-400 text-sm mt-1">
-                {orderType === 'takeaway' ? (
-                  <span className="text-orange-400">Takeaway Order</span>
+                {customerDetails.orderType === 'dine-in' ? (
+                  <span className="text-blue-400">Dine-In Order</span>
+                ) : customerDetails.orderType === 'takeaway' ? (
+                  <span className="text-green-400">Takeaway Order</span>
+                ) : customerDetails.orderType === 'pickme' ? (
+                  <span className="text-yellow-400">PickMe Delivery</span>
+                ) : customerDetails.orderType === 'uber' ? (
+                  <span className="text-black bg-white px-2 py-1 rounded text-xs font-bold">Uber Eats</span>
                 ) : (
-                  <span className="text-blue-400">Table Order</span>
+                  <span className="text-orange-400">Order</span>
                 )}
               </p>
             </div>
             {/* Table Selection Dropdown */}
-            {orderType === 'table' && (
+            {customerDetails.orderType === 'dine-in' && (
               <div className="flex items-center space-x-2">
                 <label className="text-slate-400 text-sm">Table:</label>
                 <select
@@ -190,7 +225,9 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
           </button>
         </div>
 
-        <div className="flex h-[70vh]">
+
+
+        <div className="flex h-[80vh]">
           {/* Menu Items Section */}
           <div className="flex-1 p-6 overflow-y-auto">
             {/* Search and Filter */}
@@ -391,54 +428,65 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'ta
               )}
             </div>
 
-            {/* Fixed Bottom Section - Total, Notes, and Place Order Button */}
-            {selectedItems.length > 0 && (
-              <div className="border-t border-slate-700 p-6 bg-slate-800">
-                {/* Total */}
-                <div className="mb-4">
-                  <div className="flex justify-between items-center text-lg font-bold text-white">
-                    <span>Total:</span>
-                    <span className="text-green-400">LKR {getTotalAmount().toFixed(2)}</span>
-                  </div>
-                </div>
+{/* Scrollable Bottom Section - Total, Notes, and Place Order Button */}
+{selectedItems.length > 0 && (
+  <div className="border-t border-slate-700 bg-slate-800 px-4 py-3 max-h-[40vh] overflow-y-auto">
+    {/* Total */}
+    <div className="flex justify-between items-center text-base font-semibold text-white mb-3">
+      <span>Total:</span>
+      <span className="text-green-400">LKR {getTotalAmount().toFixed(2)}</span>
+    </div>
 
-                {/* Customer Notes - Compact Version */}
-                <div className="mb-4">
-                  <label className="flex items-center text-sm font-medium text-blue-300 mb-2">
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Special Requests (Optional)
-                  </label>
-                  <textarea
-                    value={customerNotes}
-                    onChange={(e) => setCustomerNotes(e.target.value)}
-                    placeholder="Any special requests? (e.g., no onions, extra spicy, etc.)"
-                    className="w-full px-3 py-2 rounded border border-slate-600 bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
-                    rows="2"
-                    maxLength="500"
-                  />
-                  <div className="text-xs text-slate-400 mt-1 text-right">
-                    {customerNotes.length}/500
-                  </div>
-                </div>
+    {/* Customer Notes */}
+    <div className="mb-3">
+      <label className="flex items-center text-xs font-medium text-blue-300 mb-1">
+        <MessageSquare className="w-4 h-4 mr-1" />
+        Special Requests (Optional)
+      </label>
+      <textarea
+        value={customerNotes}
+        onChange={(e) => setCustomerNotes(e.target.value)}
+        placeholder="Any special requests? (e.g., no onions, extra spicy, etc.)"
+        className="w-full px-2 py-1.5 rounded-md border border-slate-600 bg-slate-700 text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
+        rows="2"
+        maxLength="500"
+      />
+      <div className="text-[11px] text-slate-400 mt-0.5 text-right">
+        {customerNotes.length}/500
+      </div>
+    </div>
+    {/* Customer Details Section */}
+<div className=" border-b border-slate-700">
+  <CustomerDetails
+    customerDetails={customerDetails}
+    onDetailsChange={handleCustomerDetailsChange}
+    orderType={customerDetails.orderType}
+    onOrderTypeChange={handleOrderTypeChange}
+  />
+</div>
+    {/* Submit Button */}
+    <button
+      onClick={handleSubmit}
+      disabled={inventoryCheck && !inventoryCheck.canFulfillOrder}
+      className={`w-full py-2.5 rounded-md font-medium transition-colors text-sm ${
+        inventoryCheck && !inventoryCheck.canFulfillOrder
+          ? 'bg-red-600/50 text-red-300 cursor-not-allowed'
+          : 'bg-blue-600 text-white hover:bg-blue-700'
+      }`}
+    >
+      {inventoryCheck && !inventoryCheck.canFulfillOrder
+        ? 'Cannot Place Order - Out of Stock'
+        : 'Place Order'}
+    </button>
 
-                {/* Submit Button - Always Visible */}
-                <button
-                  onClick={handleSubmit}
-                  disabled={inventoryCheck && !inventoryCheck.canFulfillOrder}
-                  className={`w-full py-3 rounded-lg font-medium transition-colors ${
-                    inventoryCheck && !inventoryCheck.canFulfillOrder
-                      ? 'bg-red-600/50 text-red-300 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                >
-                  {inventoryCheck && !inventoryCheck.canFulfillOrder
-                    ? 'Cannot Place Order - Out of Stock'
-                    : 'Place Order'}
-                </button>
-              </div>
-            )}
-          </div>
+  </div>
+)}
+
+
+</div>
+          
         </div>
+
       </div>
     </div>
   );

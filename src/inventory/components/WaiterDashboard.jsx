@@ -106,18 +106,32 @@ const WaiterDashboard = () => {
     setIsOrderModalOpen(true);
   };
 
-  const handlePlaceOrder = async (selectedItems, customerNotes = '') => {
+  const handlePlaceOrder = async (orderData) => {
     try {
-      const orderData = {
-        orderType: 'takeaway',
-        items: selectedItems,
+      // Extract order data from the new structure
+      const { items, customerNotes, customerDetails, tableNumber } = orderData;
+      
+      const submissionData = {
+        orderType: customerDetails.orderType || 'takeaway', // Legacy support
+        items: items,
         placedBy: 'waiter',
-        customerNotes: customerNotes || ''
+        customerNotes: customerNotes || '',
+        customerDetails: customerDetails,
+        table: tableNumber
       };
 
-      await api.post('/orders', orderData);
-      toast.success('Takeaway order placed successfully!', {
-        icon: '📦',
+      await api.post('/orders', submissionData);
+      
+      const orderTypeDisplay = customerDetails.orderType === 'dine-in' ? 'Dine-in' :
+                              customerDetails.orderType === 'takeaway' ? 'Takeaway' :
+                              customerDetails.orderType === 'pickme' ? 'PickMe' :
+                              customerDetails.orderType === 'uber' ? 'Uber Eats' : 'Order';
+      
+      toast.success(`${orderTypeDisplay} order placed successfully!`, {
+        icon: customerDetails.orderType === 'dine-in' ? '🪑' :
+              customerDetails.orderType === 'takeaway' ? '📦' :
+              customerDetails.orderType === 'pickme' ? '🚚' :
+              customerDetails.orderType === 'uber' ? '🚗' : '📋',
         style: {
           borderRadius: '10px',
           background: '#1f2937',
@@ -503,14 +517,14 @@ const WaiterDashboard = () => {
         </div>
       )}
 
-      {/* Order Modal for Takeaway Orders */}
+      {/* Order Modal for All Order Types */}
       <ErrorBoundary>
         <OrderModal
           isOpen={isOrderModalOpen}
           onClose={() => setIsOrderModalOpen(false)}
           onSubmit={handlePlaceOrder}
           menuItems={menuItems}
-          orderType="takeaway"
+          orderType="takeaway" // Default to takeaway but allow customer to choose
           tableNumber={null}
         />
       </ErrorBoundary>

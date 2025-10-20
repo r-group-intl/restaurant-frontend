@@ -3,7 +3,7 @@ import TableCard from './TableCard';
 import OrderModal from './OrderModal';
 import BillingModal from './BillingModal';
 import ErrorBoundary from './ErrorBoundary';
-import { api } from '../../lib/api';
+import api from '../services/api';
 import { toast } from 'react-hot-toast';
 
 // Utility function to safely format currency
@@ -16,12 +16,13 @@ const CashierDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [tableOrders, setTableOrders] = useState({});
   const [takeawayOrders, setTakeawayOrders] = useState([]);
+  const [deliveryOrders, setDeliveryOrders] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
   const [selectedTable, setSelectedTable] = useState(null);
   const [selectedOrderForBilling, setSelectedOrderForBilling] = useState(null);
-  const [orderType, setOrderType] = useState('table'); // 'table' or 'takeaway'
+  const [orderType, setOrderType] = useState('dine-in'); // 'dine-in' or 'takeaway' (legacy support)
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -42,6 +43,7 @@ const CashierDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
+      // Fetch main dashboard data
       const response = await api.get('/orders/dashboard');
       const { 
         orders: ordersData, 
@@ -54,6 +56,17 @@ const CashierDashboard = () => {
       setTableOrders(tablesData || {});
       setTakeawayOrders(takeawayData || []);
       setStats(statsData);
+
+      // Fetch delivery orders separately
+      try {
+        const deliveryResponse = await api.get('/delivery/active-delivery');
+        const { pending = [], active = [] } = deliveryResponse.data;
+        setDeliveryOrders([...pending, ...active]);
+      } catch (deliveryError) {
+        console.error('Error fetching delivery orders:', deliveryError);
+        // Don't show error for delivery orders, just set empty array
+        setDeliveryOrders([]);
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
@@ -81,15 +94,33 @@ const CashierDashboard = () => {
     return takeawayOrders;
   };
 
+  const handleNewTableOrder = (tableNumber) => {
+    setSelectedTable(tableNumber);
+    setOrderType(tableNumber === 'takeaway' ? 'takeaway' : 'dine-in');
+    setIsOrderModalOpen(true);
+  };
+
   const handleNewOrder = (tableNumber) => {
     setSelectedTable(tableNumber);
-    setOrderType(tableNumber === 'takeaway' ? 'takeaway' : 'table');
+    setOrderType('dine-in');
     setIsOrderModalOpen(true);
   };
 
   const handleNewTakeawayOrder = () => {
     setSelectedTable(null);
     setOrderType('takeaway');
+    setIsOrderModalOpen(true);
+  };
+
+  const handleNewPickMeOrder = () => {
+    setSelectedTable(null);
+    setOrderType('pickme');
+    setIsOrderModalOpen(true);
+  };
+
+  const handleNewUberOrder = () => {
+    setSelectedTable(null);
+    setOrderType('uber');
     setIsOrderModalOpen(true);
   };
 
@@ -103,25 +134,34 @@ const CashierDashboard = () => {
     toast.success(`Viewing ${orders.length} takeaway order(s)`);
   };
 
-  const handlePlaceOrder = async (selectedItems, customerNotes = '', tableNumberOverride = null) => {
+  const handlePlaceOrder = async (orderData) => {
     try {
-      const orderData = {
-        orderType,
-        items: selectedItems,
+      // Extract order data from the new structure
+      const { items, customerNotes, customerDetails, tableNumber } = orderData;
+      
+      const submissionData = {
+        orderType: customerDetails.orderType || orderType, // Use customer selected type or fallback to current orderType
+        items: items,
         placedBy: 'cashier',
-        customerNotes: customerNotes || ''
+        customerNotes: customerNotes || '',
+        customerDetails: customerDetails
       };
 
-      // Use table override if provided, otherwise use selectedTable for table orders
-      if (orderType === 'table') {
-        orderData.table = tableNumberOverride || selectedTable;
+      // Use table number from customer details or selected table for dine-in orders
+      if (customerDetails.orderType === 'dine-in' || orderType === 'table') {
+        submissionData.table = tableNumber || selectedTable;
       }
 
-      const response = await api.post('/orders', orderData);
+      const response = await api.post('/orders', submissionData);
+      
+      const orderTypeDisplay = customerDetails.orderType === 'dine-in' ? 'Dine-in' :
+                              customerDetails.orderType === 'takeaway' ? 'Takeaway' :
+                              customerDetails.orderType === 'pickme' ? 'PickMe' :
+                              customerDetails.orderType === 'uber' ? 'Uber Eats' : 'Order';
       
       // Show appropriate success message based on merge status
       if (response.data.merged) {
-        toast.success(response.data.message || `Items added to existing Table ${orderData.table} session!`, {
+        toast.success(response.data.message || `Items added to existing Table ${submissionData.table} session!`, {
           icon: '🔥',
           style: {
             borderRadius: '10px',
@@ -130,8 +170,11 @@ const CashierDashboard = () => {
           },
         });
       } else {
-        toast.success(`${orderType === 'takeaway' ? 'Takeaway' : 'Table'} order placed successfully!`, {
-          icon: orderType === 'takeaway' ? '📦' : '🪑',
+        toast.success(`${orderTypeDisplay} order placed successfully!`, {
+          icon: customerDetails.orderType === 'dine-in' ? '🪑' :
+                customerDetails.orderType === 'takeaway' ? '📦' :
+                customerDetails.orderType === 'pickme' ? '🚚' :
+                customerDetails.orderType === 'uber' ? '🚗' : '📋',
           style: {
             borderRadius: '10px',
             background: '#1f2937',
@@ -142,7 +185,7 @@ const CashierDashboard = () => {
       
       setIsOrderModalOpen(false);
       setSelectedTable(null);
-      setOrderType('table');
+      setOrderType('dine-in'); // Update to new default
       fetchDashboardData(); // Refresh data
     } catch (error) {
       console.error('Error placing order:', error);
@@ -254,7 +297,7 @@ const CashierDashboard = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Cashier Dashboard</h1>
-        <div className="flex space-x-6 text-sm">
+        <div className="flex space-x-6 text-sm flex-wrap">
           <div className="bg-slate-800 px-4 py-2 rounded">
             <span className="text-slate-400">Today's Revenue: </span>
             <span className="text-green-400 font-semibold">LKR {formatCurrency(stats.totalRevenue)}</span>
@@ -266,6 +309,22 @@ const CashierDashboard = () => {
           <div className="bg-slate-800 px-4 py-2 rounded">
             <span className="text-slate-400">Active Orders: </span>
             <span className="text-yellow-400 font-semibold">{stats.activeOrders || 0}</span>
+          </div>
+          <div className="bg-slate-800 px-4 py-2 rounded">
+            <span className="text-slate-400">Delivery Orders: </span>
+            <span className="text-purple-400 font-semibold">{deliveryOrders.length || 0}</span>
+          </div>
+          <div className="bg-slate-800 px-4 py-2 rounded">
+            <span className="text-slate-400">🚚 PickMe: </span>
+            <span className="text-yellow-400 font-semibold">
+              {deliveryOrders.filter(o => o.deliveryPlatform === 'pickme' || o.orderType === 'pickme').length || 0}
+            </span>
+          </div>
+          <div className="bg-slate-800 px-4 py-2 rounded">
+            <span className="text-slate-400">🚗 Uber: </span>
+            <span className="text-gray-300 font-semibold">
+              {deliveryOrders.filter(o => o.deliveryPlatform === 'uber' || o.orderType === 'uber').length || 0}
+            </span>
           </div>
         </div>
       </div>
@@ -287,26 +346,165 @@ const CashierDashboard = () => {
         </div>
       </div>
 
-      {/* Takeaway Orders Section */}
+      {/* Delivery Orders Section */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold text-white">Takeaway Orders</h2>
+          <h2 className="text-2xl font-semibold text-white">🚚 Delivery Orders (PickMe & Uber)</h2>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => {
+                setOrderType('pickme');
+                setSelectedTable(null);
+                setIsOrderModalOpen(true);
+              }}
+              className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors flex items-center space-x-2"
+            >
+              <span>🚚</span>
+              <span>+ PickMe Order</span>
+            </button>
+            <button
+              onClick={() => {
+                setOrderType('uber');
+                setSelectedTable(null);
+                setIsOrderModalOpen(true);
+              }}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center space-x-2"
+            >
+              <span>🚗</span>
+              <span>+ Uber Order</span>
+            </button>
+          </div>
+        </div>
+        
+        {deliveryOrders.length === 0 ? (
+          <div className="bg-slate-800 p-8 rounded-lg text-center">
+            <p className="text-slate-400">No active delivery orders</p>
+            <div className="mt-4 flex justify-center space-x-4">
+              <button
+                onClick={() => {
+                  setOrderType('pickme');
+                  setSelectedTable(null);
+                  setIsOrderModalOpen(true);
+                }}
+                className="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 transition-colors"
+              >
+                🚚 Create PickMe Order
+              </button>
+              <button
+                onClick={() => {
+                  setOrderType('uber');
+                  setSelectedTable(null);
+                  setIsOrderModalOpen(true);
+                }}
+                className="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700 transition-colors"
+              >
+                🚗 Create Uber Order
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {deliveryOrders.map(order => {
+              const isPickMe = order.deliveryPlatform === 'pickme' || order.orderType === 'pickme';
+              const isUber = order.deliveryPlatform === 'uber' || order.orderType === 'uber';
+              const platformIcon = isPickMe ? '🚚' : '🚗';
+              const platformName = isPickMe ? 'PickMe' : 'Uber Eats';
+              const platformColor = isPickMe ? 'border-yellow-500 bg-yellow-900/20' : 'border-gray-500 bg-gray-900/20';
+              
+              return (
+                <div key={order._id} className={`bg-slate-800 p-4 rounded-lg border ${platformColor}`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-semibold text-white">{order.orderId}</h3>
+                      <p className="text-sm text-slate-400">
+                        {platformIcon} {platformName}
+                        {order.deliveryOrderNumber && ` • #${order.deliveryOrderNumber}`}
+                      </p>
+                      {(order.customerName || order.customerMobile) && (
+                        <div className="text-xs text-slate-500 mt-1">
+                          {order.customerName && <div>👤 {order.customerName}</div>}
+                          {order.customerMobile && <div>📱 {order.customerMobile}</div>}
+                        </div>
+                      )}
+                      <p className="text-xs text-slate-500">
+                        {new Date(order.createdAt).toLocaleTimeString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span 
+                        className={`px-2 py-1 rounded text-xs font-medium ${
+                          order.status === 'pending' ? 'bg-yellow-900 text-yellow-300' :
+                          order.status === 'preparing' ? 'bg-blue-900 text-blue-300' :
+                          order.status === 'completed' ? 'bg-green-900 text-green-300' :
+                          order.status === 'done' ? 'bg-green-900 text-green-300' :
+                          'bg-slate-700 text-slate-300'
+                        }`}
+                      >
+                        {order.status === 'preparing' ? 'PREPARING' : 
+                         order.status === 'completed' ? 'READY' :
+                         order.status === 'done' ? 'DONE' :
+                         order.status.toUpperCase()}
+                      </span>
+                      <div className={`font-bold mt-1 ${isPickMe ? 'text-yellow-400' : 'text-gray-300'}`}>
+                        LKR {formatCurrency(order.totalAmount)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-slate-400 mb-3">
+                    {order.items?.length || 0} items • {order.items?.map(item => `${item.quantity || item.qty}x ${item.dishId?.name || item.dishName || item.name}`).join(', ')}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <button
+                      className="flex-1 bg-slate-700 text-slate-300 py-1 px-3 rounded text-sm hover:bg-slate-600 transition-colors"
+                    >
+                      View Details
+                    </button>
+                    {order.status === 'pending' && (
+                      <button
+                        onClick={() => handleMarkDone(order._id)}
+                        className="flex-1 bg-blue-600 text-white py-1 px-3 rounded text-sm hover:bg-blue-700 transition-colors"
+                      >
+                        Start Prep
+                      </button>
+                    )}
+                    {(order.status === 'done' || order.status === 'completed') && (
+                      <button
+                        onClick={() => handleBillOrder(order)}
+                        className="flex-1 bg-green-600 text-white py-1 px-3 rounded text-sm hover:bg-green-700 transition-colors"
+                      >
+                        Bill & Print
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* All Orders Section */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-semibold text-white">All Orders</h2>
           <button
             onClick={handleNewTakeawayOrder}
             className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
           >
-            + New Takeaway Order
+            + New Order
           </button>
         </div>
         
         {takeawayOrders.length === 0 ? (
           <div className="bg-slate-800 p-8 rounded-lg text-center">
-            <p className="text-slate-400">No takeaway orders at the moment</p>
+            <p className="text-slate-400">No orders at the moment</p>
             <button
               onClick={handleNewTakeawayOrder}
               className="mt-4 bg-orange-600 text-white px-6 py-2 rounded hover:bg-orange-700 transition-colors"
             >
-              Create First Takeaway Order
+              Create First Order
             </button>
           </div>
         ) : (
@@ -565,7 +763,7 @@ const CashierDashboard = () => {
           onClose={() => {
             setIsOrderModalOpen(false);
             setSelectedTable(null);
-            setOrderType('table');
+            setOrderType('dine-in');
           }}
           onSubmit={handlePlaceOrder}
           menuItems={menuItems}

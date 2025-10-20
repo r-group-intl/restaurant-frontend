@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import OrderCard from './OrderCard';
 import BeverageOrderCard from './BeverageOrderCard';
 import { Badge } from '../../components/ui/badge';
-import { api } from '../../lib/api';
+import api from '../services/api';
 import { toast } from 'react-hot-toast';
 import { Clock, ChefHat, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
 import kitchenSoundManager from '../utils/kitchenSound';
@@ -135,7 +135,7 @@ const KitchenDashboard = () => {
       // Check if order has beverage items that are still pending
       const hasPendingBeverages = order.items.some(item => 
         (item.category === 'Beverage' || item.category === 'Beverages') && 
-        (order.orderType === 'takeaway' ? order.status === 'pending' : item.status === 'pending')
+        (order.orderType && ['takeaway', 'pickme', 'uber'].includes(order.orderType) ? order.status === 'pending' : item.status === 'pending')
       );
       return hasPendingBeverages;
     });
@@ -148,7 +148,7 @@ const KitchenDashboard = () => {
         const isPreMade = isPreMadeCategory(item.category);
         const isBeverage = item.category === 'Beverage' || item.category === 'Beverages';
         return !isPreMade && !isBeverage && 
-        (order.orderType === 'takeaway' ? order.status === 'pending' : item.status === 'pending');
+        (order.orderType && ['takeaway', 'pickme', 'uber'].includes(order.orderType) ? order.status === 'pending' : item.status === 'pending');
       });
       return hasPendingFood;
     });

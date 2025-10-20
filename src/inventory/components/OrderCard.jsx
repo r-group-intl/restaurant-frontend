@@ -17,10 +17,23 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
   };
 
   const getTableDisplay = (order) => {
-    if (order.orderType === 'takeaway' || order.table === 'takeaway' || order.table === null) {
-      return '📦 Takeaway';
+    // Handle new order types
+    switch (order.orderType) {
+      case 'dine-in':
+        return `🪑 Table ${order.table}`;
+      case 'takeaway':
+        return '📦 Takeaway';
+      case 'pickme':
+        return '🚚 PickMe Delivery';
+      case 'uber':
+        return '🚗 Uber Eats';
+      default:
+        // Legacy support for old order types
+        if (order.orderType === 'takeaway' || order.table === 'takeaway' || order.table === null) {
+          return '📦 Takeaway';
+        }
+        return `🪑 Table ${order.table}`;
     }
-    return `🪑 Table ${order.table}`;
   };
 
   // Function to determine if an item is pre-made (ready category)
@@ -80,20 +93,42 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
       <div className="flex justify-between items-start mb-3">
         <div>
           <h3 className="text-lg text-white mt-1 font-bold">{getTableDisplay(order)}</h3>
-          <p className="text-sm  text-white bg-slate-900/50 px-2 py-1 rounded inline-block">
+          <p className="text-sm text-white bg-slate-900/50 px-2 py-1 rounded inline-block">
             {order.orderId}
           </p>
+          
+          {/* Delivery Order Number for PickMe/Uber orders */}
+          {(order.orderType === 'pickme' || order.orderType === 'uber') && order.deliveryOrderNumber && (
+            <p className="text-sm text-yellow-400 bg-yellow-900/30 px-2 py-1 rounded inline-block mt-1 font-bold">
+              {order.orderType === 'pickme' ? 'PickMe #' : 'Uber #'}{order.deliveryOrderNumber}
+            </p>
+          )}
+          
+ 
        
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 mt-1">
             {order.placedById ? 
               `by ${order.placedById.name} (${order.placedBy})` : 
               order.placedBy === 'customer' ? 'Customer Order' : `by ${order.placedBy}`
             }
           </p>
         </div>
-        <Badge className={`${getStatusColor(order.status)} text-white font-bold px-3 py-1`}>
-          {order.status.toUpperCase()}
-        </Badge>
+        <div className="flex flex-col items-end space-y-1">
+          <Badge className={`${getStatusColor(order.status)} text-white font-bold px-3 py-1`}>
+            {order.status.toUpperCase()}
+          </Badge>
+          
+          {/* Order Type Badge */}
+          {(order.orderType === 'pickme' || order.orderType === 'uber') && (
+            <Badge className={`${
+              order.orderType === 'pickme' 
+                ? 'bg-yellow-600' 
+                : 'bg-black border border-white'
+            } text-white font-bold px-2 py-1 text-xs`}>
+              {order.orderType === 'pickme' ? 'PICKME' : 'UBER'}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Items - Enhanced with better highlighting and individual status */}
@@ -234,8 +269,8 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
       {/* Actions */}
       {showActions && (
         <div className="flex space-x-2">
-          {/* Legacy actions for takeaway orders or orders without item-level status */}
-          {order.orderType === 'takeaway' && order.status === 'pending' && onDone && (
+          {/* Actions for takeaway, pickme, and uber orders */}
+          {(order.orderType === 'takeaway' || order.orderType === 'pickme' || order.orderType === 'uber') && order.status === 'pending' && onDone && (
             <button
               onClick={() => onDone(order._id)}
               className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-2 px-4 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-bold text-sm shadow-lg hover:shadow-green-500/25"
@@ -244,7 +279,44 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
             </button>
           )}
           
-          {/* Table orders - show item summary and overall status */}
+          {/* Actions for dine-in orders - show item summary and overall status */}
+          {order.orderType === 'dine-in' && (
+            <>
+              {(() => {
+                const pendingItems = order.items?.filter(item => {
+                  const isPreMade = isPreMadeCategory(item.category);
+                  return !isPreMade && item.status === 'pending';
+                }) || [];
+                
+                const readyItems = order.items?.filter(item => {
+                  const isPreMade = isPreMadeCategory(item.category);
+                  return isPreMade || item.status === 'done';
+                }) || [];
+                
+                if (pendingItems.length > 0) {
+                  return (
+                    <div className="flex-1 bg-yellow-600/20 border border-yellow-500 text-yellow-200 py-2 px-4 rounded-lg text-sm text-center">
+                      🔥 {pendingItems.length} item{pendingItems.length > 1 ? 's' : ''} cooking
+                    </div>
+                  );
+                } else if (readyItems.length > 0) {
+                  return (
+                    <div className="flex-1 bg-green-600/20 border border-green-500 text-green-200 py-2 px-4 rounded-lg text-sm text-center">
+                      ✅ All items ready for Table {order.table}
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="flex-1 bg-slate-600/20 border border-slate-500 text-slate-300 py-2 px-4 rounded-lg text-sm text-center">
+                    No active items
+                  </div>
+                );
+              })()}
+            </>
+          )}
+          
+          {/* Legacy support for old table orders */}
           {order.orderType === 'table' && (
             <>
               {(() => {
@@ -282,10 +354,11 @@ const OrderCard = ({ order, onDone, onBill, showActions = true, variant = 'defau
           )}
           
           {/* Billing action for ready orders */}
-          {(order.status === 'done' || (order.orderType === 'table' && order.items?.every(item => {
-            const isPreMade = isPreMadeCategory(item.category);
-            return isPreMade || item.status === 'done';
-          }))) && onBill && (
+          {(order.status === 'done' || 
+            ((order.orderType === 'dine-in' || order.orderType === 'table') && order.items?.every(item => {
+              const isPreMade = isPreMadeCategory(item.category);
+              return isPreMade || item.status === 'done';
+            }))) && onBill && (
             <button
               onClick={() => onBill(order._id)}
               className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-bold text-sm shadow-lg hover:shadow-blue-500/25"

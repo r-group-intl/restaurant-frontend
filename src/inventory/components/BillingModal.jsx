@@ -1,47 +1,48 @@
 import { useState, useEffect } from 'react';
-import { api } from '../../lib/api';
+import api from '../services/api';
 import { toast } from 'react-hot-toast';
 
 const BillingModal = ({ isOpen, onClose, order, onBillComplete }) => {
-  const [discount, setDiscount] = useState(0);
+  const [discount, setDiscount] = useState('');
   const [discountType, setDiscountType] = useState('fixed');
   const [discountReason, setDiscountReason] = useState('');
-  const [amountPaid, setAmountPaid] = useState(0);
+  const [amountPaid, setAmountPaid] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [loading, setLoading] = useState(false);
 
   // Calculate amounts
   const subtotal = order?.totalAmount || 0;
+  const discountValue = parseFloat(discount) || 0;
   const discountAmount = discountType === 'percentage' 
-    ? (subtotal * discount) / 100 
-    : discount;
+    ? (subtotal * discountValue) / 100 
+    : discountValue;
   const finalAmount = Math.max(0, subtotal - discountAmount);
-  const balance = Math.max(0, amountPaid - finalAmount);
+  const balance = Math.max(0, (parseFloat(amountPaid) || 0) - finalAmount);
 
-  // Reset form when modal opens
+  // Reset form when modal opens (only when modal opens or order changes, not when finalAmount changes)
   useEffect(() => {
     if (isOpen && order) {
-      setDiscount(0);
+      setDiscount('');
       setDiscountType('fixed');
       setDiscountReason('');
-      setAmountPaid(finalAmount);
+      setAmountPaid((order.totalAmount || 0).toString()); // Use original amount instead of finalAmount
       setPaymentMethod('cash');
     }
-  }, [isOpen, order, finalAmount]);
+  }, [isOpen, order]); // Removed finalAmount dependency
 
-  // Update amount paid when final amount changes
+  // Update amount paid when payment method changes to card/mobile
   useEffect(() => {
     if (paymentMethod === 'card' || paymentMethod === 'mobile') {
-      setAmountPaid(finalAmount);
+      setAmountPaid(finalAmount.toString());
     }
-  }, [finalAmount, paymentMethod]);
+  }, [paymentMethod]); // Only trigger when payment method changes, not finalAmount
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!order) return;
 
-    if (amountPaid < finalAmount && paymentMethod === 'cash') {
+    if ((parseFloat(amountPaid) || 0) < finalAmount && paymentMethod === 'cash') {
       toast.error('Amount paid cannot be less than final amount for cash payments');
       return;
     }
@@ -713,9 +714,9 @@ const billHTML = `
                   max={discountType === 'percentage' ? '100' : subtotal}
                   step={discountType === 'percentage' ? '0.1' : '0.01'}
                   value={discount}
-                  onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setDiscount(e.target.value)}
                   className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  placeholder="0"
+                  placeholder={discountType === 'percentage' ? 'Enter percentage (e.g., 10)' : 'Enter amount (e.g., 50.00)'}
                 />
               </div>
             </div>
@@ -774,9 +775,9 @@ const billHTML = `
                 min="0"
                 step="0.01"
                 value={amountPaid}
-                onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setAmountPaid(e.target.value)}
                 className="w-full p-3 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="Enter amount paid"
+                placeholder="Enter amount received from customer"
                 disabled={paymentMethod !== 'cash'}
               />
               {paymentMethod !== 'cash' && (

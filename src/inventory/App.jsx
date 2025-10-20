@@ -16,6 +16,9 @@ import Usage from './pages/Usage';
 import MenuManagement from './pages/MenuManagement';
 import KitchenDashboard from './pages/KitchenDashboard';
 import MenuAnalytics from './pages/MenuAnalytics';
+import DeliveryManagementPage from './pages/DeliveryManagementPage';
+import DeliveryAnalyticsPage from './pages/DeliveryAnalyticsPage';
+import DeliveryHistoryPage from './pages/DeliveryHistoryPage';
 import { withRoleProtection } from './utils/roleProtection.jsx';
 
 // Protected components with role restrictions
@@ -30,6 +33,9 @@ const ProtectedStaff = withRoleProtection(Staff, ['admin']);
 const ProtectedMenuManagement = withRoleProtection(MenuManagement, ['admin', 'accountant']);
 const ProtectedKitchenDashboard = withRoleProtection(KitchenDashboard, ['admin', 'accountant', 'kitchen']);
 const ProtectedMenuAnalytics = withRoleProtection(MenuAnalytics, ['admin', 'accountant']);
+const ProtectedDeliveryManagement = withRoleProtection(DeliveryManagementPage, ['admin', 'cashier']);
+const ProtectedDeliveryAnalytics = withRoleProtection(DeliveryAnalyticsPage, ['admin', 'accountant']);
+const ProtectedDeliveryHistory = withRoleProtection(DeliveryHistoryPage, ['admin', 'accountant', 'cashier']);
 
 function App() {
   const isAuthed = Boolean(localStorage.getItem('token'));
@@ -58,6 +64,9 @@ function App() {
                     <Route path="/menu-management" element={<ProtectedMenuManagement />} />
                     <Route path="/kitchen-dashboard" element={<ProtectedKitchenDashboard />} />
                     <Route path="/menu-analytics" element={<ProtectedMenuAnalytics />} />
+                    <Route path="/delivery-management" element={<ProtectedDeliveryManagement />} />
+                    <Route path="/delivery-analytics" element={<ProtectedDeliveryAnalytics />} />
+                    <Route path="/delivery-history" element={<ProtectedDeliveryHistory />} />
                   </Routes>
                 </Layout>
               ) : (

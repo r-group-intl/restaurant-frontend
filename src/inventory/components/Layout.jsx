@@ -67,7 +67,7 @@ export default function Layout({ children }) {
         <div className="p-4 border-b border-slate-700 flex-shrink-0">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-red-400">RIMS</h1>
-            <div className="text-xs text-slate-400">v3.1</div>
+            <div className="text-xs text-slate-400">v3.2</div>
           </div>
           <div className="mt-2">
             <select
@@ -94,6 +94,14 @@ export default function Layout({ children }) {
           ) : user?.role === 'cashier' ? (
             <>
               <SidebarItem to="cashier-dashboard" label="Cashier Dashboard" icon={<ComputerDesktopIcon className="w-5 h-5" />} />
+              
+              <div className="pt-4 pb-2">
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Delivery Management
+                </div>
+              </div>
+              <SidebarItem to="delivery-management" label="Active Deliveries" icon={<TruckIcon className="w-5 h-5" />} />
+              <SidebarItem to="delivery-history" label="Delivery History" icon={<ClipboardDocumentListIcon className="w-5 h-5" />} />
               
               <div className="pt-4 pb-2">
                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
@@ -125,6 +133,15 @@ export default function Layout({ children }) {
                 
                 {domain === 'restaurant' && (
                   <>
+                    <div className="pt-4 pb-2">
+                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                        Delivery Management
+                      </div>
+                    </div>
+                    <SidebarItem to="delivery-management" label="Delivery Management" icon={<TruckIcon className="w-5 h-5" />} />
+                    <SidebarItem to="delivery-analytics" label="Delivery Analytics" icon={<PresentationChartLineIcon className="w-5 h-5" />} />
+                    <SidebarItem to="delivery-history" label="Delivery History" icon={<ClipboardDocumentListIcon className="w-5 h-5" />} />
+                    
                     <div className="pt-4 pb-2">
                       <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
                         Order Management
