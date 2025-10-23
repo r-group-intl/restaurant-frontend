@@ -67,7 +67,7 @@ export default function Layout({ children }) {
         <div className="p-4 border-b border-slate-700 flex-shrink-0">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-red-400">RIMS</h1>
-            <div className="text-xs text-slate-400">v3.2</div>
+            <div className="text-xs text-slate-400">v3.3</div>
           </div>
           <div className="mt-2">
             <select

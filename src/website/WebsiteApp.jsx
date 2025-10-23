@@ -5,9 +5,13 @@ import RestaurantNavbar from './components/RestaurantNavbar';
 import RestaurantFooter from './components/RestaurantFooter';
 import ScrollToTop from './components/ScrollToTop';
 import CartModal from './components/CartModal';
+import WebsiteLogin from './components/WebsiteLogin';
+import TableSelection from './components/TableSelection';
+import { useWebsiteAuth } from './hooks/useWebsiteAuth';
 import './index.css';
 
 function WebsiteApp() {
+  const { user, loading: authLoading, isAuthenticated, login } = useWebsiteAuth();
   const [cart, setCart] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -15,13 +19,16 @@ function WebsiteApp() {
   const [isTableLocked, setIsTableLocked] = useState(false);
 
   useEffect(() => {
+    // Only proceed if user is authenticated
+    if (!isAuthenticated) return;
+
     // Check URL for table parameter (QR code support)
     const urlParams = new URLSearchParams(window.location.search);
     const tableParam = urlParams.get('table');
     
     if (tableParam) {
       const tableNum = parseInt(tableParam, 10);
-      if (tableNum >= 1 && tableNum <= 10) {
+      if (tableNum >= 1 && tableNum <= 20) {
         setTableNumber(tableNum);
         setIsTableLocked(true); // Lock table when coming from QR
         
@@ -38,9 +45,13 @@ function WebsiteApp() {
         setTableNumber(parseInt(savedTable, 10));
         setIsTableLocked(true);
       } else {
-        // Default table for manual access
-        setTableNumber(7);
-        setIsTableLocked(false);
+        // Check if user has a saved table preference
+        const userTablePreference = localStorage.getItem('website_table_preference');
+        if (userTablePreference) {
+          setTableNumber(parseInt(userTablePreference, 10));
+          setIsTableLocked(false);
+        }
+        // If no table preference, user can select table via navbar
       }
     }
 
@@ -50,7 +61,7 @@ function WebsiteApp() {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isAuthenticated]);
 
   const handleAddToCart = (item) => {
     setCart(prevCart => {
@@ -89,16 +100,44 @@ function WebsiteApp() {
     // Only allow table changes if not locked by QR code
     if (!isTableLocked) {
       setTableNumber(newTableNumber);
+      // Save user's table preference
+      localStorage.setItem('website_table_preference', newTableNumber.toString());
     }
   };
 
+  const handleLoginSuccess = (userData, token) => {
+    login(userData, token);
+  };
+
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-red-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg font-medium">Loading Restaurants By Ronan...</p>
+          <p className="text-gray-400 text-sm mt-2">CRAVE INTERNATIONALLY ENJOY LOCALLY</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login form if not authenticated
+  if (!isAuthenticated) {
+    return <WebsiteLogin onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Show loading screen while initializing
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-600 via-white to-green-600 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-white border-t-red-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-800 text-lg font-medium">Loading Restaurants By Ronan...</p>
-          <p className="text-gray-600 text-sm mt-2">CREATE INTERNATIONALLY ENJOY LOCALLY</p>
+          <p className="text-gray-800 text-lg font-medium">Welcome to Restaurants By Ronan...</p>
+          <p className="text-gray-600 text-sm mt-2">Setting up your dining experience</p>
+          {tableNumber && (
+            <p className="text-red-600 text-sm mt-1">Table {tableNumber}</p>
+          )}
         </div>
       </div>
     );

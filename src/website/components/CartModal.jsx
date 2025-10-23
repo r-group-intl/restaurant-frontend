@@ -37,7 +37,7 @@ const CartModal = ({ isOpen, onClose, cartItems, tableNumber, onUpdateQuantity, 
       }));
 
       const orderData = {
-        orderType: 'table',
+        orderType: 'dine-in',
         table: tableNumber,
         items: orderItems,
         placedBy: 'customer', // This is a customer order from website
