@@ -60,6 +60,12 @@ export const getUnitCategory = (unit) => {
   return null;
 };
 
+// Round to specified precision to avoid floating point errors
+const roundToPrecision = (value, precision = 3) => {
+  const multiplier = Math.pow(10, precision);
+  return Math.round(value * multiplier) / multiplier;
+};
+
 // Convert quantity from one unit to another
 export const convertUnit = (quantity, fromUnit, toUnit) => {
   const fromUnitLower = fromUnit.toLowerCase();
@@ -67,7 +73,7 @@ export const convertUnit = (quantity, fromUnit, toUnit) => {
   
   // If units are the same, no conversion needed
   if (fromUnitLower === toUnitLower) {
-    return quantity;
+    return roundToPrecision(quantity);
   }
   
   const fromCategory = getUnitCategory(fromUnitLower);
@@ -84,7 +90,8 @@ export const convertUnit = (quantity, fromUnit, toUnit) => {
   const baseQuantity = quantity * conversions[fromUnitLower];
   const convertedQuantity = baseQuantity / conversions[toUnitLower];
   
-  return convertedQuantity;
+  // Round to 3 decimal places to avoid floating point precision issues
+  return roundToPrecision(convertedQuantity);
 };
 
 // Calculate cost based on unit conversion
@@ -92,14 +99,14 @@ export const calculateConvertedCost = (recipeQuantity, recipeUnit, stockQuantity
   try {
     // Convert recipe quantity to stock unit for cost calculation
     const convertedQuantity = convertUnit(recipeQuantity, recipeUnit, stockUnit);
-    const totalCost = convertedQuantity * stockPrice;
+    const totalCost = roundToPrecision(convertedQuantity * stockPrice, 2);
     
     return {
       success: true,
       convertedQuantity,
       totalCost,
-      conversionRatio: convertedQuantity / recipeQuantity,
-      unitCost: totalCost / recipeQuantity // Cost per recipe unit
+      conversionRatio: roundToPrecision(convertedQuantity / recipeQuantity),
+      unitCost: roundToPrecision(totalCost / recipeQuantity, 2) // Cost per recipe unit
     };
   } catch (error) {
     return {

@@ -5,6 +5,7 @@ import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
 import { useDomain } from '../context/DomainContext';
 import { ShoppingCart, Edit, Trash2, RefreshCw } from "lucide-react";
+import { formatQuantity, formatPrice, parseInventoryNumber, safeMultiply } from '../utils/numberUtils';
 
 export default function Inventory() {
   const { domain } = useDomain();
@@ -152,12 +153,12 @@ export default function Inventory() {
   const handlePurchaseSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Create purchase transaction
+      // Create purchase transaction with proper precision
       const transactionData = {
         item: purchasingItem.name,
         type: 'purchase',
-        quantity: parseFloat(purchaseFormData.quantity),
-        unitPrice: parseFloat(purchaseFormData.unitPrice),
+        quantity: parseInventoryNumber(purchaseFormData.quantity),
+        unitPrice: parseInventoryNumber(purchaseFormData.unitPrice, 2),
         supplier: purchaseFormData.supplier,
         notes: purchaseFormData.notes || `Purchase - ${purchasingItem.name}`,
         expiryDate: purchaseFormData.expiryDate,
@@ -170,9 +171,9 @@ export default function Inventory() {
       if (purchaseFormData.expiryDate || purchasingItem.trackExpiry) {
         const batchData = {
           itemId: purchasingItem._id,
-          quantity: parseFloat(purchaseFormData.quantity),
+          quantity: parseInventoryNumber(purchaseFormData.quantity),
           expiryDate: purchaseFormData.expiryDate || new Date(Date.now() + (purchasingItem.defaultShelfLife || 7) * 24 * 60 * 60 * 1000),
-          unitPrice: parseFloat(purchaseFormData.unitPrice),
+          unitPrice: parseInventoryNumber(purchaseFormData.unitPrice, 2),
           supplierId: purchaseFormData.supplier,
           batchNumber: purchaseFormData.batchNumber,
           notes: purchaseFormData.notes
@@ -299,7 +300,7 @@ export default function Inventory() {
       render: (_, item) => (
         <div className="flex flex-col">
           <span className={`${item.quantity <= (item.reorderLevel || 0) ? 'text-red-400' : 'text-white'}`}>
-            {item.quantity} {item.unit}
+            {formatQuantity(item.quantity)} {item.unit}
           </span>
           {item.trackExpiry && (
             <div className="text-xs text-slate-400">
@@ -322,14 +323,14 @@ export default function Inventory() {
     { 
       key: 'unitPrice', 
       label: 'Unit Price',
-      render: (_, item) => `LKR ${(item.price || 0).toFixed(2)}`
+      render: (_, item) => `LKR ${formatPrice(item.price || 0)}`
     },
     { 
       key: 'value', 
       label: 'Total Value',
       render: (_, item) => (
         <span className="font-medium text-green-400">
-          LKR {((item.quantity || 0) * (item.price || 0)).toFixed(2)}
+          LKR {formatPrice(safeMultiply(item.quantity || 0, item.price || 0))}
         </span>
       )
     },
@@ -337,14 +338,14 @@ export default function Inventory() {
     { 
       key: 'reorderLevel', 
       label: 'Reorder Level',
-      render: (_, item) => `${item.reorderLevel || 0} ${item.unit}`
+      render: (_, item) => `${formatQuantity(item.reorderLevel || 0)} ${item.unit}`
     },
     { 
       key: 'lastPurchasedQty', 
       label: 'Last Purchased Qty',
       render: (_, item) => (
         <span className="text-blue-400">
-          {item.lastPurchasedQty || 0} {item.unit}
+          {formatQuantity(item.lastPurchasedQty || 0)} {item.unit}
         </span>
       )
     },
@@ -507,7 +508,7 @@ export default function Inventory() {
                   <div key={batch._id} className="p-3 rounded-md bg-red-500/10 border border-red-500/20">
                     <div className="font-medium text-red-400">{batch.itemId?.name}</div>
                     <div className="text-sm text-slate-300">
-                      Batch: {batch.batchNumber} • Qty: {batch.quantity} {batch.itemId?.unit}
+                      Batch: {batch.batchNumber} • Qty: {formatQuantity(batch.quantity)} {batch.itemId?.unit}
                     </div>
                     <div className="text-xs text-red-300">
                       Expired: {new Date(batch.expiryDate).toLocaleDateString()}
@@ -537,7 +538,7 @@ export default function Inventory() {
                   <div key={batch._id} className="p-3 rounded-md bg-yellow-500/10 border border-yellow-500/20">
                     <div className="font-medium text-yellow-400">{batch.itemId?.name}</div>
                     <div className="text-sm text-slate-300">
-                      Batch: {batch.batchNumber} • Qty: {batch.quantity} {batch.itemId?.unit}
+                      Batch: {batch.batchNumber} • Qty: {formatQuantity(batch.quantity)} {batch.itemId?.unit}
                     </div>
                     <div className="text-xs text-yellow-300">
                       Expires: {new Date(batch.expiryDate).toLocaleDateString()}
@@ -564,7 +565,7 @@ export default function Inventory() {
                 <div>
                   <div className="font-medium text-red-400">{item.name}</div>
                   <div className="text-sm text-slate-300">
-                    Stock: {item.quantity} {item.unit} • Reorder: {item.reorderLevel} {item.unit}
+                    Stock: {formatQuantity(item.quantity)} {item.unit} • Reorder: {formatQuantity(item.reorderLevel)} {item.unit}
                   </div>
                 </div>
                 <button 
@@ -649,7 +650,7 @@ export default function Inventory() {
                 step="0.1"
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={itemFormData.quantity}
-                onChange={(e) => setItemFormData({...itemFormData, quantity: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setItemFormData({...itemFormData, quantity: parseInventoryNumber(e.target.value)})}
               />
             </div>
             <div>
@@ -660,7 +661,7 @@ export default function Inventory() {
                 step="0.01"
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={itemFormData.price}
-                onChange={(e) => setItemFormData({...itemFormData, price: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setItemFormData({...itemFormData, price: parseInventoryNumber(e.target.value, 2)})}
               />
             </div>
             <div>
@@ -671,7 +672,7 @@ export default function Inventory() {
                 step="0.1"
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={itemFormData.reorderLevel}
-                onChange={(e) => setItemFormData({...itemFormData, reorderLevel: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setItemFormData({...itemFormData, reorderLevel: parseInventoryNumber(e.target.value)})}
               />
             </div>
           </div>
@@ -685,7 +686,7 @@ export default function Inventory() {
                 step="0.1"
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={itemFormData.maxOrderLevel}
-                onChange={(e) => setItemFormData({...itemFormData, maxOrderLevel: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setItemFormData({...itemFormData, maxOrderLevel: parseInventoryNumber(e.target.value)})}
               />
             </div>
             <div>
@@ -696,7 +697,7 @@ export default function Inventory() {
                 step="0.1"
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={itemFormData.lastPurchasedQty}
-                onChange={(e) => setItemFormData({...itemFormData, lastPurchasedQty: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setItemFormData({...itemFormData, lastPurchasedQty: parseInventoryNumber(e.target.value)})}
               />
             </div>
           </div>
@@ -833,7 +834,7 @@ export default function Inventory() {
         <form onSubmit={handlePurchaseSubmit} className="space-y-4">
           <div className="p-3 bg-slate-800 rounded">
             <div className="text-sm text-slate-400">Current Stock</div>
-            <div className="text-lg font-semibold">{purchasingItem?.quantity} {purchasingItem?.unit}</div>
+            <div className="text-lg font-semibold">{formatQuantity(purchasingItem?.quantity)} {purchasingItem?.unit}</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -846,7 +847,7 @@ export default function Inventory() {
                 required
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={purchaseFormData.quantity}
-                onChange={(e) => setPurchaseFormData({...purchaseFormData, quantity: e.target.value})}
+                onChange={(e) => setPurchaseFormData({...purchaseFormData, quantity: parseInventoryNumber(e.target.value)})}
               />
             </div>
             <div>
@@ -858,7 +859,7 @@ export default function Inventory() {
                 required
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={purchaseFormData.unitPrice}
-                onChange={(e) => setPurchaseFormData({...purchaseFormData, unitPrice: e.target.value})}
+                onChange={(e) => setPurchaseFormData({...purchaseFormData, unitPrice: parseInventoryNumber(e.target.value, 2)})}
               />
             </div>
           </div>
@@ -925,7 +926,7 @@ export default function Inventory() {
             <div className="p-3 bg-primary-600/10 border border-primary-600/20 rounded">
               <div className="text-sm text-slate-400">Total Cost</div>
               <div className="text-xl font-bold text-primary">
-                LKR {(parseFloat(purchaseFormData.quantity) * parseFloat(purchaseFormData.unitPrice)).toLocaleString()}
+                LKR {formatPrice(safeMultiply(purchaseFormData.quantity, purchaseFormData.unitPrice))}
               </div>
             </div>
           )}
@@ -1002,7 +1003,7 @@ export default function Inventory() {
                           <div className="mt-2 grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-slate-400">Quantity:</span>
-                              <span className="ml-1 font-medium">{batch.quantity} {batch.itemId?.unit || 'units'}</span>
+                              <span className="ml-1 font-medium">{formatQuantity(batch.quantity)} {batch.itemId?.unit || 'units'}</span>
                             </div>
                             <div>
                               <span className="text-slate-400">Purchase Date:</span>
@@ -1016,7 +1017,7 @@ export default function Inventory() {
                             </div>
                             <div>
                               <span className="text-slate-400">Unit Price:</span>
-                              <span className="ml-1">LKR {batch.unitPrice.toFixed(2)}</span>
+                              <span className="ml-1">LKR {formatPrice(batch.unitPrice)}</span>
                             </div>
                           </div>
                           
@@ -1044,7 +1045,7 @@ export default function Inventory() {
                         
                         <div className="text-right">
                           <div className="text-lg font-bold text-green-400">
-                            LKR {(batch.quantity * batch.unitPrice).toFixed(2)}
+                            LKR {formatPrice(safeMultiply(batch.quantity, batch.unitPrice))}
                           </div>
                           <div className="text-xs text-slate-400">Total Value</div>
                         </div>
@@ -1058,19 +1059,19 @@ export default function Inventory() {
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
                     <span className="text-slate-400">Total Quantity:</span>
-                    <div className="font-medium">{selectedItemBatches.reduce((sum, b) => sum + b.quantity, 0)} units</div>
+                    <div className="font-medium">{formatQuantity(selectedItemBatches.reduce((sum, b) => sum + b.quantity, 0))} units</div>
                   </div>
                   <div>
                     <span className="text-slate-400">Total Value:</span>
                     <div className="font-medium text-green-400">
-                      LKR {selectedItemBatches.reduce((sum, b) => sum + (b.quantity * b.unitPrice), 0).toFixed(2)}
+                      LKR {formatPrice(selectedItemBatches.reduce((sum, b) => safeMultiply(sum, safeMultiply(b.quantity, b.unitPrice)), 0))}
                     </div>
                   </div>
                   <div>
                     <span className="text-slate-400">Avg. Price:</span>
                     <div className="font-medium">
-                      LKR {(selectedItemBatches.reduce((sum, b) => sum + (b.quantity * b.unitPrice), 0) / 
-                            selectedItemBatches.reduce((sum, b) => sum + b.quantity, 0)).toFixed(2)}
+                      LKR {formatPrice(selectedItemBatches.reduce((sum, b) => sum + safeMultiply(b.quantity, b.unitPrice), 0) / 
+                            selectedItemBatches.reduce((sum, b) => sum + b.quantity, 0))}
                     </div>
                   </div>
                 </div>
