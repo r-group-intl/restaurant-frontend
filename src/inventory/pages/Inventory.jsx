@@ -6,6 +6,13 @@ import Modal from '../components/ui/Modal';
 import { useDomain } from '../context/DomainContext';
 import { ShoppingCart, Edit, Trash2, RefreshCw } from "lucide-react";
 import { formatQuantity, formatPrice, parseInventoryNumber, safeMultiply } from '../utils/numberUtils';
+import { 
+  getPurchaseUnitsForBaseUnit, 
+  convertPurchaseToBaseUnit, 
+  calculateTotalCost, 
+  getConversionDisplay,
+  getSuggestedPurchaseUnits 
+} from '../utils/purchaseUnitConverter';
 
 export default function Inventory() {
   const { domain } = useDomain();
@@ -48,6 +55,8 @@ export default function Inventory() {
   const [purchaseFormData, setPurchaseFormData] = useState({
     quantity: 0,
     unitPrice: 0,
+    purchaseUnit: '', // New field for purchase unit selection
+    totalPrice: 0, // New field for total price of purchase
     supplier: '',
     notes: '',
     expiryDate: '',
@@ -153,16 +162,31 @@ export default function Inventory() {
   const handlePurchaseSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Convert purchase unit to base unit
+      const conversionResult = convertPurchaseToBaseUnit(
+        purchaseFormData.quantity,
+        purchaseFormData.totalPrice,
+        purchaseFormData.purchaseUnit,
+        purchasingItem.unit
+      );
+
       // Create purchase transaction with proper precision
       const transactionData = {
         item: purchasingItem.name,
         type: 'purchase',
-        quantity: parseInventoryNumber(purchaseFormData.quantity),
-        unitPrice: parseInventoryNumber(purchaseFormData.unitPrice, 2),
+        quantity: conversionResult.baseQuantity,
+        unitPrice: conversionResult.baseUnitPrice,
         supplier: purchaseFormData.supplier,
-        notes: purchaseFormData.notes || `Purchase - ${purchasingItem.name}`,
+        notes: purchaseFormData.notes || `Purchase - ${purchasingItem.name} (${purchaseFormData.quantity} ${purchaseFormData.purchaseUnit})`,
         expiryDate: purchaseFormData.expiryDate,
-        batchNumber: purchaseFormData.batchNumber
+        batchNumber: purchaseFormData.batchNumber,
+        // Add purchase metadata for reference
+        purchaseMetadata: {
+          purchaseQuantity: purchaseFormData.quantity,
+          purchaseUnit: purchaseFormData.purchaseUnit,
+          totalPrice: purchaseFormData.totalPrice,
+          conversionFactor: conversionResult.conversionFactor
+        }
       };
 
       await api.post('/transactions', transactionData);
@@ -171,12 +195,19 @@ export default function Inventory() {
       if (purchaseFormData.expiryDate || purchasingItem.trackExpiry) {
         const batchData = {
           itemId: purchasingItem._id,
-          quantity: parseInventoryNumber(purchaseFormData.quantity),
+          quantity: conversionResult.baseQuantity,
           expiryDate: purchaseFormData.expiryDate || new Date(Date.now() + (purchasingItem.defaultShelfLife || 7) * 24 * 60 * 60 * 1000),
-          unitPrice: parseInventoryNumber(purchaseFormData.unitPrice, 2),
+          unitPrice: conversionResult.baseUnitPrice,
           supplierId: purchaseFormData.supplier,
           batchNumber: purchaseFormData.batchNumber,
-          notes: purchaseFormData.notes
+          notes: purchaseFormData.notes,
+          // Add purchase metadata to batch as well
+          purchaseMetadata: {
+            purchaseQuantity: purchaseFormData.quantity,
+            purchaseUnit: purchaseFormData.purchaseUnit,
+            totalPrice: purchaseFormData.totalPrice,
+            conversionFactor: conversionResult.conversionFactor
+          }
         };
 
         await api.post('/batches', batchData);
@@ -187,6 +218,8 @@ export default function Inventory() {
       setPurchaseFormData({
         quantity: 0,
         unitPrice: 0,
+        purchaseUnit: '',
+        totalPrice: 0,
         supplier: '',
         notes: '',
         expiryDate: '',
@@ -231,10 +264,16 @@ export default function Inventory() {
       futureDate.setDate(futureDate.getDate() + (item.defaultShelfLife || 7));
       defaultExpiryDate = futureDate.toISOString().split('T')[0];
     }
+
+    // Get suggested purchase units for this item
+    const suggestedUnits = getSuggestedPurchaseUnits(item.name, item.unit);
+    const defaultPurchaseUnit = suggestedUnits[0] || item.unit;
     
     setPurchaseFormData({
       quantity: 0,
       unitPrice: 0,
+      purchaseUnit: defaultPurchaseUnit,
+      totalPrice: 0,
       supplier: item.supplierId?._id || '',
       notes: '',
       expiryDate: defaultExpiryDate,
@@ -825,8 +864,12 @@ export default function Inventory() {
           setPurchaseFormData({
             quantity: 0,
             unitPrice: 0,
+            purchaseUnit: '',
+            totalPrice: 0,
             supplier: '',
-            notes: ''
+            notes: '',
+            expiryDate: '',
+            batchNumber: ''
           });
         }}
         title={`Purchase: ${purchasingItem?.name}`}
@@ -835,6 +878,37 @@ export default function Inventory() {
           <div className="p-3 bg-slate-800 rounded">
             <div className="text-sm text-slate-400">Current Stock</div>
             <div className="text-lg font-semibold">{formatQuantity(purchasingItem?.quantity)} {purchasingItem?.unit}</div>
+          </div>
+
+          {/* Purchase Unit Selection */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Purchase Unit</label>
+            <select
+              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
+              value={purchaseFormData.purchaseUnit}
+              onChange={(e) => {
+                const newPurchaseUnit = e.target.value;
+                setPurchaseFormData({
+                  ...purchaseFormData, 
+                  purchaseUnit: newPurchaseUnit,
+                  // Reset quantities when unit changes
+                  quantity: 0,
+                  totalPrice: 0,
+                  unitPrice: 0
+                });
+              }}
+              required
+            >
+              <option value="">Select Purchase Unit</option>
+              {purchasingItem && Object.entries(getPurchaseUnitsForBaseUnit(purchasingItem.unit)).map(([key, unit]) => (
+                <option key={key} value={key}>{unit.label}</option>
+              ))}
+            </select>
+            {purchaseFormData.purchaseUnit && (
+              <div className="text-xs text-slate-400 mt-1">
+                This unit will be converted to {purchasingItem?.unit} for inventory tracking
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -847,22 +921,67 @@ export default function Inventory() {
                 required
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={purchaseFormData.quantity}
-                onChange={(e) => setPurchaseFormData({...purchaseFormData, quantity: parseInventoryNumber(e.target.value)})}
+                onChange={(e) => {
+                  const newQuantity = parseInventoryNumber(e.target.value);
+                  setPurchaseFormData({...purchaseFormData, quantity: newQuantity});
+                }}
               />
+              {purchaseFormData.purchaseUnit && purchaseFormData.quantity > 0 && (
+                <div className="text-xs text-green-400 mt-1">
+                  {getConversionDisplay(purchaseFormData.purchaseUnit, purchasingItem?.unit, purchaseFormData.quantity)?.conversionText}
+                </div>
+              )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Unit Price (LKR)</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Total Price (LKR)</label>
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 required
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
-                value={purchaseFormData.unitPrice}
-                onChange={(e) => setPurchaseFormData({...purchaseFormData, unitPrice: parseInventoryNumber(e.target.value, 2)})}
+                value={purchaseFormData.totalPrice}
+                onChange={(e) => {
+                  const newTotalPrice = parseInventoryNumber(e.target.value, 2);
+                  setPurchaseFormData({...purchaseFormData, totalPrice: newTotalPrice});
+                }}
               />
+              <div className="text-xs text-slate-400 mt-1">
+                Total cost for {purchaseFormData.quantity} {purchaseFormData.purchaseUnit ? getPurchaseUnitsForBaseUnit(purchasingItem?.unit)?.[purchaseFormData.purchaseUnit]?.label : 'units'}
+              </div>
             </div>
           </div>
+
+          {/* Calculated Unit Price Display */}
+          {purchaseFormData.quantity > 0 && purchaseFormData.totalPrice > 0 && purchaseFormData.purchaseUnit && (
+            <div className="p-3 bg-blue-600/10 border border-blue-600/20 rounded">
+              <div className="text-sm text-slate-400 mb-2">Price Calculation</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-slate-400">Price per {getPurchaseUnitsForBaseUnit(purchasingItem?.unit)?.[purchaseFormData.purchaseUnit]?.label}:</span>
+                  <div className="font-medium">LKR {formatPrice(purchaseFormData.totalPrice / purchaseFormData.quantity)}</div>
+                </div>
+                <div>
+                  <span className="text-slate-400">Price per {purchasingItem?.unit}:</span>
+                  <div className="font-medium text-blue-400">
+                    LKR {(() => {
+                      try {
+                        const conversion = convertPurchaseToBaseUnit(
+                          purchaseFormData.quantity,
+                          purchaseFormData.totalPrice,
+                          purchaseFormData.purchaseUnit,
+                          purchasingItem?.unit
+                        );
+                        return formatPrice(conversion.baseUnitPrice);
+                      } catch (error) {
+                        return '0.00';
+                      }
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">Supplier</label>
@@ -922,11 +1041,11 @@ export default function Inventory() {
             </div>
           </div>
 
-          {purchaseFormData.quantity > 0 && purchaseFormData.unitPrice > 0 && (
+          {purchaseFormData.totalPrice > 0 && (
             <div className="p-3 bg-primary-600/10 border border-primary-600/20 rounded">
-              <div className="text-sm text-slate-400">Total Cost</div>
+              <div className="text-sm text-slate-400">Total Purchase Cost</div>
               <div className="text-xl font-bold text-primary">
-                LKR {formatPrice(safeMultiply(purchaseFormData.quantity, purchaseFormData.unitPrice))}
+                LKR {formatPrice(purchaseFormData.totalPrice)}
               </div>
             </div>
           )}
@@ -940,6 +1059,8 @@ export default function Inventory() {
                 setPurchaseFormData({
                   quantity: 0,
                   unitPrice: 0,
+                  purchaseUnit: '',
+                  totalPrice: 0,
                   supplier: '',
                   notes: '',
                   expiryDate: '',
@@ -953,6 +1074,7 @@ export default function Inventory() {
             <button 
               type="submit"
               className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              disabled={!purchaseFormData.quantity || !purchaseFormData.totalPrice || !purchaseFormData.purchaseUnit}
             >
               Record Purchase
             </button>
