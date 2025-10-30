@@ -310,6 +310,24 @@ export default function Inventory() {
     }
   };
 
+  const handleSyncInventory = async () => {
+    if (confirm('This will synchronize all inventory quantities with their batch totals. Continue?')) {
+      try {
+        const response = await api.post('/inventory/repair');
+        
+        if (response.data.success) {
+          alert(`Inventory synchronized successfully! ${response.data.message}`);
+          loadData(); // Refresh the data
+        } else {
+          alert('Failed to synchronize inventory');
+        }
+      } catch (error) {
+        console.error('Error synchronizing inventory:', error);
+        alert('Error synchronizing inventory. Please try again.');
+      }
+    }
+  };
+
   const handleDeleteItem = async (id) => {
     if (confirm('Are you sure you want to delete this item?')) {
       try {
@@ -446,6 +464,14 @@ export default function Inventory() {
           >
             <RefreshCw className="w-4 h-4" />
             <span>Refresh</span>
+          </button>
+          <button 
+            onClick={handleSyncInventory}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center space-x-2"
+            title="Synchronize inventory quantities with batch totals"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Sync Quantities</span>
           </button>
           <button 
             onClick={() => setShowItemModal(true)}
