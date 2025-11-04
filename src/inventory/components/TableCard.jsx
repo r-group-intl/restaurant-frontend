@@ -1,15 +1,21 @@
 import { Badge } from '../../components/ui/badge';
+import { Percent } from 'lucide-react';
+import { 
+  getDisplayAmount, 
+  hasDiscount, 
+  getDiscountInfo, 
+  formatDisplayAmount 
+} from '../../utils/orderUtils';
 
 // Utility function to safely format currency
 const formatCurrency = (amount) => {
-  const num = Number(amount) || 0;
-  return isNaN(num) ? '0.00' : num.toFixed(2);
+  return formatDisplayAmount(amount);
 };
 
 const TableCard = ({ tableNumber, orders = [], onNewOrder, onViewDetails, onFinishSession }) => {
   const activeOrders = orders.filter(order => order.status !== 'billed');
   const inProgressSession = orders.find(order => order.status === 'in_progress');
-  const totalAmount = activeOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+  const totalAmount = activeOrders.reduce((sum, order) => sum + getDisplayAmount(order), 0);
   const hasActiveOrders = activeOrders.length > 0;
   const hasInProgressSession = !!inProgressSession;
 
@@ -56,7 +62,7 @@ const TableCard = ({ tableNumber, orders = [], onNewOrder, onViewDetails, onFini
           </div>
           <div className="text-orange-200 text-xs mb-2">
             {inProgressSession.items.length} item{inProgressSession.items.length > 1 ? 's' : ''} • 
-            LKR {formatCurrency(inProgressSession.totalAmount)}
+            LKR {formatCurrency(getDisplayAmount(inProgressSession))}
           </div>
           
           {/* Item status summary */}
@@ -101,7 +107,20 @@ const TableCard = ({ tableNumber, orders = [], onNewOrder, onViewDetails, onFini
               </div>
               <div className="text-slate-300 text-xs mt-1">
                 {order.items.length} item{order.items.length > 1 ? 's' : ''} • 
-                LKR {formatCurrency(order.totalAmount)}
+                <span>LKR {formatCurrency(getDisplayAmount(order))}</span>
+                {hasDiscount(order) && (
+                  <span className="text-orange-400 ml-2 flex items-center gap-1">
+                    <Percent size={10} />
+                    <span>
+                      {(() => {
+                        const discountInfo = getDiscountInfo(order);
+                        return order.discountType === 'percentage' 
+                          ? `${order.discount}% off` 
+                          : `LKR ${formatCurrency(discountInfo.discountAmount)} off`;
+                      })()}
+                    </span>
+                  </span>
+                )}
               </div>
             </div>
           ))}

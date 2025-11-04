@@ -4,12 +4,17 @@ import OrderModal from './OrderModal';
 import ErrorBoundary from './ErrorBoundary';
 import { api } from '../../lib/api';
 import { toast } from 'react-hot-toast';
-import { User, Clock, CheckCircle, Package } from 'lucide-react';
+import { User, Clock, CheckCircle, Package, Percent } from 'lucide-react';
+import { 
+  getDisplayAmount, 
+  hasDiscount, 
+  getDiscountInfo, 
+  formatDisplayAmount 
+} from '../../utils/orderUtils';
 
 // Utility function to safely format currency
 const formatCurrency = (amount) => {
-  const num = Number(amount) || 0;
-  return isNaN(num) ? '0.00' : num.toFixed(2);
+  return formatDisplayAmount(amount);
 };
 
 const WaiterDashboard = () => {
@@ -350,7 +355,20 @@ const WaiterDashboard = () => {
                             {order.status === 'pending' ? '🔥 COOKING' : '✅ READY'}
                           </span>
                           <div className="text-orange-400 font-bold mt-1">
-                            LKR {formatCurrency(order.totalAmount)}
+                            <div>LKR {formatCurrency(getDisplayAmount(order))}</div>
+                            {hasDiscount(order) && (
+                              <div className="text-xs text-orange-300 flex items-center gap-1">
+                                <Percent size={10} />
+                                <span>
+                                  {(() => {
+                                    const discountInfo = getDiscountInfo(order);
+                                    return order.discountType === 'percentage' 
+                                      ? `${order.discount}% off` 
+                                      : `LKR ${formatCurrency(discountInfo.discountAmount)} off`;
+                                  })()}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -443,7 +461,7 @@ const WaiterDashboard = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {Object.entries(ordersByTable).map(([table, tableOrders]) => {
               const hasReadyOrders = tableOrders.some(order => order.status === 'done');
-              const totalAmount = tableOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+              const totalAmount = tableOrders.reduce((sum, order) => sum + getDisplayAmount(order), 0);
               
               return (
                 <div

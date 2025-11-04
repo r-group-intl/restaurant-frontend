@@ -14,9 +14,17 @@ import {
   Users,
   Clock,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Percent
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
+import { 
+  getDisplayAmount, 
+  hasDiscount, 
+  getDiscountInfo, 
+  formatDisplayAmount, 
+  calculateTotalRevenue 
+} from '../../utils/orderUtils';
 
 const OrderAnalytics = () => {
   const [orders, setOrders] = useState([]);
@@ -93,8 +101,8 @@ const OrderAnalytics = () => {
       const matchesTable = filters.table === 'all' || (order.table && order.table.toString() === filters.table);
       
       const matchesAmount = 
-        (!filters.minAmount || (order.totalAmount && order.totalAmount >= parseFloat(filters.minAmount))) &&
-        (!filters.maxAmount || (order.totalAmount && order.totalAmount <= parseFloat(filters.maxAmount)));
+        (!filters.minAmount || (getDisplayAmount(order) >= parseFloat(filters.minAmount))) &&
+        (!filters.maxAmount || (getDisplayAmount(order) <= parseFloat(filters.maxAmount)));
 
       return matchesSearch && matchesStatus && matchesPlacedBy && matchesTable && matchesAmount;
     });
@@ -119,7 +127,7 @@ const OrderAnalytics = () => {
     }
 
     // Basic stats
-    const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+    const totalRevenue = calculateTotalRevenue(filteredOrders);
     const totalOrders = filteredOrders.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
@@ -138,7 +146,7 @@ const OrderAnalytics = () => {
         acc[table] = { orders: 0, revenue: 0 };
       }
       acc[table].orders += 1;
-      acc[table].revenue += (order.totalAmount || 0);
+      acc[table].revenue += getDisplayAmount(order);
       return acc;
     }, {});
 
@@ -173,7 +181,7 @@ const OrderAnalytics = () => {
           dailyStats[date] = { orders: 0, revenue: 0 };
         }
         dailyStats[date].orders += 1;
-        dailyStats[date].revenue += (order.totalAmount || 0);
+        dailyStats[date].revenue += getDisplayAmount(order);
       }
     });
 
@@ -222,7 +230,7 @@ const OrderAnalytics = () => {
       order.placedBy || '',
       order.status || '',
       order.items ? order.items.map(item => `${item.dishName || 'Unknown'} x${item.qty || 0}`).join('; ') : '',
-      (order.totalAmount || 0).toFixed(2)
+      (getDisplayAmount(order)).toFixed(2)
     ]);
 
     const csvContent = [headers, ...csvData]
@@ -503,9 +511,24 @@ const OrderAnalytics = () => {
                     </div>
                   </td>
                   <td className="p-4 text-right">
-                    <span className="text-green-400 font-semibold">
-                      LKR {(order.totalAmount || 0).toFixed(2)}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-green-400 font-semibold">
+                        LKR {formatDisplayAmount(getDisplayAmount(order))}
+                      </span>
+                      {hasDiscount(order) && (
+                        <div className="text-xs text-orange-400 flex items-center justify-end gap-1 mt-1">
+                          <Percent size={12} />
+                          <span>
+                            {(() => {
+                              const discountInfo = getDiscountInfo(order);
+                              return discountInfo.discountType === 'percentage' 
+                                ? `${order.discount}% off` 
+                                : `LKR ${formatDisplayAmount(discountInfo.discountAmount)} off`;
+                            })()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="p-4 text-center">
                     <Badge className={`${getStatusColor(order.status)} text-white`}>
@@ -663,11 +686,77 @@ const OrderAnalytics = () => {
               </div>
 
               <div className="border-t border-slate-700 pt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-white">Total Amount:</span>
-                  <span className="text-xl font-bold text-green-400">
-                    LKR {selectedOrder.totalAmount.toFixed(2)}
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400">Subtotal:</span>
+                    <span className="text-white">
+                      LKR {formatDisplayAmount(selectedOrder.totalAmount)}
+                    </span>
+                  </div>
+                  
+                  {hasDiscount(selectedOrder) && (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 flex items-center gap-1">
+                          <Percent size={14} />
+                          Discount:
+                        </span>
+                        <span className="text-orange-400">
+                          {(() => {
+                            const discountInfo = getDiscountInfo(selectedOrder);
+                            return selectedOrder.discountType === 'percentage' 
+                              ? `${selectedOrder.discount}% (LKR ${formatDisplayAmount(discountInfo.discountAmount)})`
+                              : `LKR ${formatDisplayAmount(discountInfo.discountAmount)}`;
+                          })()}
+                        </span>
+                      </div>
+                      
+                      {selectedOrder.discountReason && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">Reason:</span>
+                          <span className="text-slate-300 text-sm italic">
+                            {selectedOrder.discountReason}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  
+                  <div className="flex justify-between items-center text-lg font-semibold border-t border-slate-600 pt-2">
+                    <span className="text-white">
+                      {hasDiscount(selectedOrder) ? 'Final Amount:' : 'Total Amount:'}
+                    </span>
+                    <span className="text-green-400">
+                      LKR {formatDisplayAmount(getDisplayAmount(selectedOrder))}
+                    </span>
+                  </div>
+                  
+                  {selectedOrder.status === 'billed' && selectedOrder.amountPaid && (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Amount Paid:</span>
+                        <span className="text-blue-400">
+                          LKR {formatDisplayAmount(selectedOrder.amountPaid)}
+                        </span>
+                      </div>
+                      
+                      {selectedOrder.balance > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400">Change:</span>
+                          <span className="text-yellow-400">
+                            LKR {formatDisplayAmount(selectedOrder.balance)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Payment Method:</span>
+                        <span className="text-white capitalize">
+                          {selectedOrder.paymentMethod}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
