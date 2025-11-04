@@ -17,6 +17,7 @@ import Usage from './pages/Usage';
 import MenuManagement from './pages/MenuManagement';
 import OldKitchenDashboard from './pages/KitchenDashboard';
 import MenuAnalytics from './pages/MenuAnalytics';
+import MenuPackingManagement from './pages/MenuPackingManagement';
 import CashierDashboard from './components/CashierDashboard';
 import NewKitchenDashboard from './components/KitchenDashboard';
 import WaiterDashboard from './components/WaiterDashboard';
@@ -36,6 +37,7 @@ const ProtectedSupplierPayments = withRoleProtection(SupplierPayments, ['admin',
 const ProtectedTransactions = withRoleProtection(Transactions, ['admin', 'accountant']);
 const ProtectedStaff = withRoleProtection(Staff, ['admin']);
 const ProtectedMenuManagement = withRoleProtection(MenuManagement, ['admin', 'accountant']);
+const ProtectedMenuPackingManagement = withRoleProtection(MenuPackingManagement, ['admin', 'accountant']);
 const ProtectedOldKitchenDashboard = withRoleProtection(OldKitchenDashboard, ['admin', 'accountant', 'kitchen']);
 const ProtectedMenuAnalytics = withRoleProtection(MenuAnalytics, ['admin', 'accountant']);
 
@@ -97,6 +99,7 @@ function InventoryApp() {
                   <Route path="transactions" element={<ProtectedTransactions />} />
                   <Route path="staff" element={<ProtectedStaff />} />
                   <Route path="menu-management" element={<ProtectedMenuManagement />} />
+                  <Route path="menu-packing" element={<ProtectedMenuPackingManagement />} />
                   <Route path="kitchen-dashboard" element={<ProtectedOldKitchenDashboard />} />
                   <Route path="menu-analytics" element={<ProtectedMenuAnalytics />} />
                   

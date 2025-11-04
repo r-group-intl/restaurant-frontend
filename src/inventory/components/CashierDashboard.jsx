@@ -5,11 +5,17 @@ import BillingModal from './BillingModal';
 import ErrorBoundary from './ErrorBoundary';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import { Percent } from 'lucide-react';
+import { 
+  getDisplayAmount, 
+  hasDiscount, 
+  getDiscountInfo, 
+  formatDisplayAmount 
+} from '../../utils/orderUtils';
 
 // Utility function to safely format currency
 const formatCurrency = (amount) => {
-  const num = Number(amount) || 0;
-  return isNaN(num) ? '0.00' : num.toFixed(2);
+  return formatDisplayAmount(amount);
 };
 
 const CashierDashboard = () => {
@@ -446,7 +452,20 @@ const CashierDashboard = () => {
                          order.status.toUpperCase()}
                       </span>
                       <div className={`font-bold mt-1 ${isPickMe ? 'text-yellow-400' : 'text-gray-300'}`}>
-                        LKR {formatCurrency(order.totalAmount)}
+                        <div>LKR {formatCurrency(getDisplayAmount(order))}</div>
+                        {hasDiscount(order) && (
+                          <div className="text-xs text-orange-400 flex items-center gap-1">
+                            <Percent size={10} />
+                            <span>
+                              {(() => {
+                                const discountInfo = getDiscountInfo(order);
+                                return order.discountType === 'percentage' 
+                                  ? `${order.discount}% off` 
+                                  : `LKR ${formatCurrency(discountInfo.discountAmount)} off`;
+                              })()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -532,7 +551,20 @@ const CashierDashboard = () => {
                       {order.status.toUpperCase()}
                     </span>
                     <div className="text-orange-400 font-bold mt-1">
-                      LKR {formatCurrency(order.totalAmount)}
+                      <div>LKR {formatCurrency(getDisplayAmount(order))}</div>
+                      {hasDiscount(order) && (
+                        <div className="text-xs text-orange-300 flex items-center gap-1">
+                          <Percent size={10} />
+                          <span>
+                            {(() => {
+                              const discountInfo = getDiscountInfo(order);
+                              return order.discountType === 'percentage' 
+                                ? `${order.discount}% off` 
+                                : `LKR ${formatCurrency(discountInfo.discountAmount)} off`;
+                            })()}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -609,7 +641,20 @@ const CashierDashboard = () => {
                         {order.status === 'pending' ? '🔥 COOKING' : '✅ READY'}
                       </span>
                       <div className="text-orange-400 font-bold mt-1">
-                        LKR {formatCurrency(order.totalAmount)}
+                        <div>LKR {formatCurrency(getDisplayAmount(order))}</div>
+                        {hasDiscount(order) && (
+                          <div className="text-xs text-orange-300 flex items-center gap-1">
+                            <Percent size={10} />
+                            <span>
+                              {(() => {
+                                const discountInfo = getDiscountInfo(order);
+                                return order.discountType === 'percentage' 
+                                  ? `${order.discount}% off` 
+                                  : `LKR ${formatCurrency(discountInfo.discountAmount)} off`;
+                              })()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -681,7 +726,20 @@ const CashierDashboard = () => {
                         🔥 IN PROGRESS
                       </span>
                       <div className="text-orange-400 font-bold mt-1">
-                        LKR {formatCurrency(order.totalAmount)}
+                        <div>LKR {formatCurrency(getDisplayAmount(order))}</div>
+                        {hasDiscount(order) && (
+                          <div className="text-xs text-orange-300 flex items-center gap-1">
+                            <Percent size={10} />
+                            <span>
+                              {(() => {
+                                const discountInfo = getDiscountInfo(order);
+                                return order.discountType === 'percentage' 
+                                  ? `${order.discount}% off` 
+                                  : `LKR ${formatCurrency(discountInfo.discountAmount)} off`;
+                              })()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -742,7 +800,22 @@ const CashierDashboard = () => {
                       <p className="font-semibold text-slate-400">{order.orderId}</p>
    
                     </div>
-                    <span className="text-green-400 font-bold">LKR {formatCurrency(order.totalAmount)}</span>
+                    <div className="text-right">
+                      <span className="text-green-400 font-bold">LKR {formatCurrency(getDisplayAmount(order))}</span>
+                      {hasDiscount(order) && (
+                        <div className="text-xs text-orange-400 flex items-center justify-end gap-1 mt-1">
+                          <Percent size={10} />
+                          <span>
+                            {(() => {
+                              const discountInfo = getDiscountInfo(order);
+                              return order.discountType === 'percentage' 
+                                ? `${order.discount}% off` 
+                                : `LKR ${formatCurrency(discountInfo.discountAmount)} off`;
+                            })()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <button
                     onClick={() => handleBillOrder(order)}
