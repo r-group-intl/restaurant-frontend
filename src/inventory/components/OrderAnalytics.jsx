@@ -15,18 +15,25 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
-  Percent
+  Percent,
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { 
   getDisplayAmount, 
+  getRevenueAmount,
   hasDiscount, 
   getDiscountInfo, 
   formatDisplayAmount, 
-  calculateTotalRevenue 
+  calculateTotalRevenue,
+  isCancelled,
+  canCancelOrder
 } from '../../utils/orderUtils';
+import { useAuth } from '../hooks/useAuth';
 
 const OrderAnalytics = () => {
+  const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +63,10 @@ const OrderAnalytics = () => {
   });
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   useEffect(() => {
     fetchOrdersData();
@@ -126,10 +137,11 @@ const OrderAnalytics = () => {
       return;
     }
 
-    // Basic stats
+    // Basic stats - exclude cancelled orders from revenue
     const totalRevenue = calculateTotalRevenue(filteredOrders);
     const totalOrders = filteredOrders.length;
-    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const revenueOrders = filteredOrders.filter(order => !isCancelled(order) && order.status === 'billed').length;
+    const avgOrderValue = revenueOrders > 0 ? totalRevenue / revenueOrders : 0;
 
     // Status breakdown
     const statusBreakdown = filteredOrders.reduce((acc, order) => {
@@ -139,40 +151,42 @@ const OrderAnalytics = () => {
       return acc;
     }, {});
 
-    // Table statistics
+    // Table statistics - exclude cancelled orders from revenue
     const tableStats = filteredOrders.reduce((acc, order) => {
       const table = order.table ? order.table.toString() : 'unknown';
       if (!acc[table]) {
         acc[table] = { orders: 0, revenue: 0 };
       }
       acc[table].orders += 1;
-      acc[table].revenue += getDisplayAmount(order);
+      acc[table].revenue += getRevenueAmount(order); // This excludes cancelled orders
       return acc;
     }, {});
 
-    // Top items
+    // Top items - exclude cancelled orders
     const itemStats = {};
-    filteredOrders.forEach(order => {
-      if (order.items && Array.isArray(order.items)) {
-        order.items.forEach(item => {
-          if (item.dishName) {
-            if (!itemStats[item.dishName]) {
-              itemStats[item.dishName] = { qty: 0, revenue: 0, orders: 0 };
+    filteredOrders
+      .filter(order => !isCancelled(order)) // Exclude cancelled orders from item stats
+      .forEach(order => {
+        if (order.items && Array.isArray(order.items)) {
+          order.items.forEach(item => {
+            if (item.dishName) {
+              if (!itemStats[item.dishName]) {
+                itemStats[item.dishName] = { qty: 0, revenue: 0, orders: 0 };
+              }
+              itemStats[item.dishName].qty += (item.qty || 0);
+              itemStats[item.dishName].revenue += (item.totalPrice || 0);
+              itemStats[item.dishName].orders += 1;
             }
-            itemStats[item.dishName].qty += (item.qty || 0);
-            itemStats[item.dishName].revenue += (item.totalPrice || 0);
-            itemStats[item.dishName].orders += 1;
-          }
-        });
-      }
-    });
+          });
+        }
+      });
 
     const topItems = Object.entries(itemStats)
       .map(([name, stats]) => ({ name, ...stats }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
 
-    // Daily stats
+    // Daily stats - exclude cancelled orders from revenue
     const dailyStats = {};
     filteredOrders.forEach(order => {
       if (order.createdAt) {
@@ -181,7 +195,7 @@ const OrderAnalytics = () => {
           dailyStats[date] = { orders: 0, revenue: 0 };
         }
         dailyStats[date].orders += 1;
-        dailyStats[date].revenue += getDisplayAmount(order);
+        dailyStats[date].revenue += getRevenueAmount(order); // This excludes cancelled orders
       }
     });
 
@@ -251,6 +265,46 @@ const OrderAnalytics = () => {
     setShowOrderModal(true);
   };
 
+  const handleCancelOrder = (order) => {
+    setOrderToCancel(order);
+    setCancellationReason('');
+    setShowCancelModal(true);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!orderToCancel || !cancellationReason.trim()) {
+      toast.error('Cancellation reason is required');
+      return;
+    }
+
+    if (cancellationReason.trim().length < 10) {
+      toast.error('Cancellation reason must be at least 10 characters long');
+      return;
+    }
+
+    setCancelLoading(true);
+    try {
+      await api.patch(`/orders/${orderToCancel._id}/cancel`, {
+        cancellationReason: cancellationReason.trim()
+      });
+
+      toast.success('Order cancelled successfully');
+      
+      // Refresh data
+      fetchOrdersData();
+      
+      // Close modal
+      setShowCancelModal(false);
+      setOrderToCancel(null);
+      setCancellationReason('');
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast.error(error.response?.data?.message || 'Failed to cancel order');
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
   // Pagination
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -262,6 +316,7 @@ const OrderAnalytics = () => {
       case 'pending': return 'bg-yellow-600';
       case 'done': return 'bg-green-600';
       case 'billed': return 'bg-blue-600';
+      case 'cancelled': return 'bg-red-600';
       default: return 'bg-gray-600';
     }
   };
@@ -384,6 +439,7 @@ const OrderAnalytics = () => {
               <option value="pending">Pending</option>
               <option value="done">Done</option>
               <option value="billed">Billed</option>
+              <option value="cancelled">Cancelled</option>
             </select>
           </div>
 
@@ -512,21 +568,32 @@ const OrderAnalytics = () => {
                   </td>
                   <td className="p-4 text-right">
                     <div className="text-right">
-                      <span className="text-green-400 font-semibold">
-                        LKR {formatDisplayAmount(getDisplayAmount(order))}
-                      </span>
-                      {hasDiscount(order) && (
-                        <div className="text-xs text-orange-400 flex items-center justify-end gap-1 mt-1">
-                          <Percent size={12} />
-                          <span>
-                            {(() => {
-                              const discountInfo = getDiscountInfo(order);
-                              return discountInfo.discountType === 'percentage' 
-                                ? `${order.discount}% off` 
-                                : `LKR ${formatDisplayAmount(discountInfo.discountAmount)} off`;
-                            })()}
+                      {isCancelled(order) ? (
+                        <div>
+                          <span className="text-red-400 font-semibold line-through">
+                            LKR {formatDisplayAmount(order.totalAmount || 0)}
                           </span>
+                          <div className="text-xs text-red-400 mt-1">CANCELLED</div>
                         </div>
+                      ) : (
+                        <>
+                          <span className="text-green-400 font-semibold">
+                            LKR {formatDisplayAmount(getDisplayAmount(order))}
+                          </span>
+                          {hasDiscount(order) && (
+                            <div className="text-xs text-orange-400 flex items-center justify-end gap-1 mt-1">
+                              <Percent size={12} />
+                              <span>
+                                {(() => {
+                                  const discountInfo = getDiscountInfo(order);
+                                  return discountInfo.discountType === 'percentage' 
+                                    ? `${order.discount}% off` 
+                                    : `LKR ${formatDisplayAmount(discountInfo.discountAmount)} off`;
+                                })()}
+                              </span>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
@@ -536,12 +603,25 @@ const OrderAnalytics = () => {
                     </Badge>
                   </td>
                   <td className="p-4 text-center">
-                    <button
-                      onClick={() => viewOrderDetails(order)}
-                      className="text-blue-400 hover:text-blue-300 p-2 rounded hover:bg-slate-700"
-                    >
-                      <Eye size={16} />
-                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => viewOrderDetails(order)}
+                        className="text-blue-400 hover:text-blue-300 p-2 rounded hover:bg-slate-700"
+                        title="View Details"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      
+                      {user && canCancelOrder(order, user) && (
+                        <button
+                          onClick={() => handleCancelOrder(order)}
+                          className="text-red-400 hover:text-red-300 p-2 rounded hover:bg-slate-700"
+                          title="Cancel Order"
+                        >
+                          <XCircle size={16} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -661,9 +741,14 @@ const OrderAnalytics = () => {
                 </div>
                 <div>
                   <p className="text-slate-400 text-sm">Status</p>
-                  <Badge className={`${getStatusColor(selectedOrder.status)} text-white`}>
-                    {selectedOrder.status}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={`${getStatusColor(selectedOrder.status)} text-white`}>
+                      {selectedOrder.status}
+                    </Badge>
+                    {isCancelled(selectedOrder) && (
+                      <span className="text-red-400 text-xs">CANCELLED</span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -684,6 +769,26 @@ const OrderAnalytics = () => {
                   ))}
                 </div>
               </div>
+
+              {isCancelled(selectedOrder) && (
+                <div className="mb-6 p-4 bg-red-900/20 border border-red-600 rounded">
+                  <h3 className="text-lg font-semibold text-red-400 mb-2 flex items-center gap-2">
+                    <XCircle size={18} />
+                    Order Cancelled
+                  </h3>
+                  <div className="text-sm space-y-1">
+                    <div className="text-slate-400">
+                      Cancelled: {selectedOrder.cancelledAt ? new Date(selectedOrder.cancelledAt).toLocaleString() : 'N/A'}
+                    </div>
+                    {selectedOrder.cancellationReason && (
+                      <div>
+                        <span className="text-slate-400">Reason: </span>
+                        <span className="text-white">{selectedOrder.cancellationReason}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="border-t border-slate-700 pt-4">
                 <div className="space-y-2">
@@ -758,6 +863,81 @@ const OrderAnalytics = () => {
                     </>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Order Modal */}
+      {showCancelModal && orderToCancel && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 rounded-lg max-w-md w-full border border-slate-700">
+            <div className="p-6 border-b border-slate-700">
+              <div className="flex items-center space-x-3">
+                <AlertTriangle className="text-red-400" size={24} />
+                <h2 className="text-xl font-bold text-white">Cancel Order</h2>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-slate-300 mb-2">
+                  Are you sure you want to cancel order <span className="font-mono text-blue-400">{orderToCancel.orderId}</span>?
+                </p>
+                <p className="text-slate-400 text-sm mb-4">
+                  This will restore all inventory items back to stock and exclude this order from revenue calculations.
+                </p>
+                
+                <div className="bg-slate-700 p-3 rounded mb-4">
+                  <div className="text-sm text-slate-400">Order Details:</div>
+                  <div className="text-white">
+                    Table: {orderToCancel.table === 'takeaway' ? 'Takeaway' : `Table ${orderToCancel.table}`}
+                  </div>
+                  <div className="text-white">
+                    Amount: LKR {formatDisplayAmount(getDisplayAmount(orderToCancel))}
+                  </div>
+                  <div className="text-white">
+                    Items: {orderToCancel.items?.length || 0} items
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm text-slate-400 mb-2">
+                  Cancellation Reason <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  placeholder="Please provide a detailed reason for cancelling this order (minimum 10 characters)..."
+                  className="w-full bg-slate-700 text-white p-3 rounded border border-slate-600 min-h-[100px] resize-none"
+                  maxLength={500}
+                />
+                <div className="text-xs text-slate-500 mt-1">
+                  {cancellationReason.length}/500 characters (minimum 10 required)
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setOrderToCancel(null);
+                    setCancellationReason('');
+                  }}
+                  className="flex-1 bg-slate-600 text-white py-2 px-4 rounded hover:bg-slate-700 transition-colors"
+                  disabled={cancelLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmCancelOrder}
+                  disabled={cancelLoading || cancellationReason.trim().length < 10}
+                  className="flex-1 bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {cancelLoading ? 'Cancelling...' : 'Confirm Cancel'}
+                </button>
               </div>
             </div>
           </div>
