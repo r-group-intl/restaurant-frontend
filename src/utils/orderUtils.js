@@ -3,12 +3,17 @@
  */
 
 /**
- * Get the correct amount to display for an order considering discounts
+ * Get the correct amount to display for an order considering discounts and cancellation
  * @param {Object} order - The order object
  * @returns {number} - The amount to display
  */
 export const getDisplayAmount = (order) => {
   if (!order) return 0;
+  
+  // Cancelled orders show 0 for display
+  if (order.status === 'cancelled' || order.isCancelled) {
+    return 0;
+  }
   
   // For billed orders with discount, use finalAmount
   if (order.status === 'billed' && order.discount > 0 && order.finalAmount !== undefined) {
@@ -21,6 +26,37 @@ export const getDisplayAmount = (order) => {
   }
   
   // For all other cases, use totalAmount
+  return order.totalAmount || 0;
+};
+
+/**
+ * Get the revenue amount for an order (only counts billed, non-cancelled orders)
+ * @param {Object} order - The order object
+ * @returns {number} - The revenue amount
+ */
+export const getRevenueAmount = (order) => {
+  if (!order) return 0;
+  
+  // Cancelled orders contribute 0 to revenue
+  if (order.status === 'cancelled' || order.isCancelled) {
+    return 0;
+  }
+  
+  // Only billed orders count towards revenue
+  if (order.status !== 'billed') {
+    return 0;
+  }
+  
+  // For virtual field from backend (if available)
+  if (order.revenueAmount !== undefined) {
+    return order.revenueAmount;
+  }
+  
+  // Use finalAmount if discount applied, otherwise totalAmount
+  if (order.discount > 0 && order.finalAmount !== undefined) {
+    return order.finalAmount;
+  }
+  
   return order.totalAmount || 0;
 };
 
@@ -39,6 +75,51 @@ export const hasDiscount = (order) => {
   
   // Manual check
   return order.status === 'billed' && order.discount > 0;
+};
+
+/**
+ * Check if an order is cancelled
+ * @param {Object} order - The order object
+ * @returns {boolean} - True if order is cancelled
+ */
+export const isCancelled = (order) => {
+  if (!order) return false;
+  
+  // Check virtual field from backend (if available)
+  if (order.isCancelled !== undefined) {
+    return order.isCancelled;
+  }
+  
+  // Manual check
+  return order.status === 'cancelled';
+};
+
+/**
+ * Check if an order can be cancelled
+ * @param {Object} order - The order object
+ * @param {Object} user - Current user
+ * @returns {boolean} - True if order can be cancelled
+ */
+export const canCancelOrder = (order, user) => {
+  if (!order || !user) return false;
+  
+  // Only admin can cancel orders
+  if (user.role !== 'admin') return false;
+  
+  // Order must be billed
+  if (order.status !== 'billed') return false;
+  
+  // Order must not already be cancelled
+  if (isCancelled(order)) return false;
+  
+  // Check if order is too old (max 24 hours)
+  if (order.billedAt) {
+    const orderAge = Date.now() - new Date(order.billedAt).getTime();
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+    if (orderAge > maxAge) return false;
+  }
+  
+  return true;
 };
 
 /**
@@ -86,14 +167,14 @@ export const formatDisplayAmount = (amount) => {
 };
 
 /**
- * Calculate total revenue from orders considering discounts
+ * Calculate total revenue from orders considering discounts and excluding cancelled orders
  * @param {Array} orders - Array of order objects
- * @returns {number} - Total revenue after discounts
+ * @returns {number} - Total revenue after discounts, excluding cancelled
  */
 export const calculateTotalRevenue = (orders) => {
   if (!Array.isArray(orders)) return 0;
   
-  return orders.reduce((total, order) => total + getDisplayAmount(order), 0);
+  return orders.reduce((total, order) => total + getRevenueAmount(order), 0);
 };
 
 /**
@@ -103,14 +184,19 @@ export const calculateTotalRevenue = (orders) => {
  */
 export const getOrderAmountDetails = (order) => {
   const displayAmount = getDisplayAmount(order);
+  const revenueAmount = getRevenueAmount(order);
   const discountInfo = getDiscountInfo(order);
+  const cancelled = isCancelled(order);
   
   return {
     displayAmount,
+    revenueAmount,
     originalAmount: order.totalAmount || 0,
     hasDiscount: discountInfo.hasDiscount,
     discountAmount: discountInfo.discountAmount,
     discountType: discountInfo.discountType,
-    discountReason: discountInfo.discountReason
+    discountReason: discountInfo.discountReason,
+    isCancelled: cancelled,
+    cancellationReason: order.cancellationReason || null
   };
 };

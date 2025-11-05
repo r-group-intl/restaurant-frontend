@@ -8,9 +8,11 @@ import { toast } from 'react-hot-toast';
 import { Percent } from 'lucide-react';
 import { 
   getDisplayAmount, 
+  getRevenueAmount,
   hasDiscount, 
   getDiscountInfo, 
-  formatDisplayAmount 
+  formatDisplayAmount,
+  isCancelled
 } from '../../utils/orderUtils';
 
 // Utility function to safely format currency
