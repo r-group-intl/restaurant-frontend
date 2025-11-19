@@ -21,6 +21,7 @@ import {
   ClipboardDocumentCheckIcon,
   TrashIcon,
   ExclamationTriangleIcon,
+  ChatBubbleLeftEllipsisIcon,
 } from '@heroicons/react/24/outline';
 
 const SidebarItem = ({ to, label, icon }) => (
@@ -160,6 +161,7 @@ export default function Layout({ children }) {
                     <SidebarItem to="menu-management" label="Menu & Recipes" icon={<BookOpenIcon className="w-5 h-5" />} />
                     <SidebarItem to="menu-packing" label="Menu Packing" icon={<CubeIcon className="w-5 h-5" />} />
                     <SidebarItem to="menu-analytics" label="Menu Analytics" icon={<PresentationChartLineIcon className="w-5 h-5" />} />
+                    <SidebarItem to="sms-campaigns" label="SMS Campaigns" icon={<ChatBubbleLeftEllipsisIcon className="w-5 h-5" />} />
                     <SidebarItem to="categories" label="Categories" icon={<TagIcon className="w-5 h-5" />} />
                     <SidebarItem to="suppliers" label="Suppliers" icon={<TruckIcon className="w-5 h-5" />} />
                     <SidebarItem to="supplier-payments" label="Supplier Payments" icon={<BanknotesIcon className="w-5 h-5" />} />
