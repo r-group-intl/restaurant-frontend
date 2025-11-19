@@ -6,6 +6,7 @@ import Modal from '../components/ui/Modal';
 import { useDomain } from '../context/DomainContext';
 import { ShoppingCart, Edit, Trash2, RefreshCw } from "lucide-react";
 import { formatQuantity, formatPrice, parseInventoryNumber, safeMultiply } from '../utils/numberUtils';
+import PDFExportButton from '../components/PDFExportButton';
 import { 
   getPurchaseUnitsForBaseUnit, 
   convertPurchaseToBaseUnit, 
@@ -490,6 +491,20 @@ export default function Inventory() {
 }
   ];
 
+  // Prepare data for PDF export
+  const preparePDFData = () => {
+    const lowStockItems = [...items, ...packingItems].filter(item => item.quantity <= (item.reorderLevel || 0));
+    
+    return {
+      items,
+      packingItems,
+      lowStockItems,
+      expiredBatches,
+      nearExpiryBatches,
+      inventoryValue
+    };
+  };
+
   const lowStockItems = [...items, ...packingItems].filter(item => item.quantity <= (item.reorderLevel || 0));
 
   return (
@@ -514,6 +529,11 @@ export default function Inventory() {
             <RefreshCw className="w-4 h-4" />
             <span>Sync Quantities</span>
           </button>
+          <PDFExportButton 
+            inventoryData={preparePDFData()}
+            onSuccess={(result) => alert(result.message)}
+            onError={(error) => alert(`Error generating PDF: ${error.message}`)}
+          />
           <button 
             onClick={() => {
               setItemFormData(prev => ({
