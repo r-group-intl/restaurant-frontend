@@ -24,6 +24,7 @@ import WaiterDashboard from './components/WaiterDashboard';
 import OrderAnalytics from './components/OrderAnalytics';
 import WastageManagement from './components/WastageManagement';
 import OutOfStockManagement from './components/OutOfStockManagement';
+import SMSCampaigns from './pages/SMSCampaigns';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
 import { withRoleProtection } from './utils/roleProtection.jsx';
 
@@ -50,6 +51,9 @@ const ProtectedOrderAnalytics = withRoleProtection(OrderAnalytics, ['admin']);
 // New Wastage and Stock Management
 const ProtectedWastageManagement = withRoleProtection(WastageManagement, ['admin', 'cashier']);
 const ProtectedOutOfStockManagement = withRoleProtection(OutOfStockManagement, ['admin', 'cashier']);
+
+// SMS Campaign Management
+const ProtectedSMSCampaigns = withRoleProtection(SMSCampaigns, ['admin', 'accountant']);
 
 function InventoryApp() {
   const isAuthed = Boolean(localStorage.getItem('token'));
@@ -102,6 +106,7 @@ function InventoryApp() {
                   <Route path="menu-packing" element={<ProtectedMenuPackingManagement />} />
                   <Route path="kitchen-dashboard" element={<ProtectedOldKitchenDashboard />} />
                   <Route path="menu-analytics" element={<ProtectedMenuAnalytics />} />
+                  <Route path="sms-campaigns" element={<ProtectedSMSCampaigns />} />
                   
                   {/* New Order Management Dashboards */}
                   <Route path="cashier-dashboard" element={<ProtectedCashierDashboard />} />
