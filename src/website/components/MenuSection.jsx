@@ -277,10 +277,12 @@ const MenuSection = ({ onAddToCart }) => {
                 {filteredItems.map((item, index) => (
             <div 
               key={item.id} 
-              className={`menu-card group animate-fade-in-up animate-delay-Rs.  {Math.min(index * 100 + 100, 400)} hover-lift`}
+              className={`group animate-fade-in-up animate-delay-${Math.min(index * 100 + 100, 400)} transform transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl`}
             >
+              {/* Seamless Card Container */}
+              <div className="bg-gradient-to-b from-neutral-800 to-neutral-900 rounded-2xl overflow-hidden shadow-xl border border-neutral-700/50 hover:border-red-500/30 transition-all duration-300">
               {/* Professional Dark Image Container */}
-              <div className="relative overflow-hidden h-48 md:h-56 rounded-t-2xl cursor-pointer group"
+              <div className="relative overflow-hidden h-48 md:h-56 cursor-pointer group"
                    onClick={() => setSelectedImage(item)}>
                 <img 
                   src={item.image} 
@@ -353,11 +355,11 @@ const MenuSection = ({ onAddToCart }) => {
                 </div>
               </div>
 
-              {/* Professional Dark Content */}
-              <div className="p-6 bg-neutral-900 rounded-b-2xl border-x border-b border-gray-00">
+              {/* Professional Dark Content - Seamless Design */}
+              <div className="p-6 bg-gradient-to-b from-neutral-900 to-neutral-950 rounded-b-2xl">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
-                    <h3 className="text-xl font text-white group-hover:text-red-400 transition-smooth">
+                    <h3 className="text-xl font-bold text-white group-hover:text-red-400 transition-smooth">
                       {item.name}
                     </h3>
                     {item.subname && (
@@ -366,22 +368,22 @@ const MenuSection = ({ onAddToCart }) => {
                       </p>
                     )}
                   </div>
-                  <p className="text-xl font-bold text-white ml-4">
+                  <p className="text-xl font-bold text-red-400 ml-4">
                     Rs. {item.price}
                   </p>
                 </div>
 
-                <p className="text-gray-400 text-sm leading-relaxed mb-6">
+                <p className="text-gray-300 text-sm leading-relaxed mb-6 line-clamp-3">
                   {item.description}
                 </p>
 
                 <Button
                   onClick={() => handleAddToCart(item)}
                   disabled={loadingItems[item.id] || item.isOutOfStock}
-                  className={`w-full group ${
+                  className={`w-full group transition-all duration-300 font-semibold ${
                     item.isOutOfStock 
-                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed opacity-50' 
-                      : 'btn-primary hover-glow'
+                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed opacity-50 hover:bg-gray-700' 
+                      : 'bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-red-500/30 hover:scale-[1.02]'
                   }`}
                 >
                   {item.isOutOfStock ? (
@@ -401,6 +403,7 @@ const MenuSection = ({ onAddToCart }) => {
                     </>
                   )}
                 </Button>
+              </div>
               </div>
             </div>
                 ))}
