@@ -3,7 +3,7 @@ import api from '../services/api';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
-import { PlusIcon, PencilSquareIcon, TrashIcon, CurrencyDollarIcon, ArrowPathIcon, PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, CurrencyDollarIcon, ArrowPathIcon, PhotoIcon, XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { 
   calculateConvertedCost, 
   getCompatibleUnits, 
@@ -14,6 +14,10 @@ import { getImageUrl } from '../../utils/imageUtils';
 
 export default function MenuManagement() {
   const [menuItems, setMenuItems] = useState([]);
+  const [filteredMenuItems, setFilteredMenuItems] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [profitFilter, setProfitFilter] = useState('all'); // all, profitable, loss
   const [items, setItems] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -42,6 +46,7 @@ export default function MenuManagement() {
         api.get('/items')
       ]);
       setMenuItems(menuRes.data);
+      setFilteredMenuItems(menuRes.data);
       setItems(itemsRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -53,6 +58,57 @@ export default function MenuManagement() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Filter menu items based on search term, category, and profit
+  useEffect(() => {
+    let filtered = menuItems;
+
+    // Search filter - search across name, subname, description, category, and ingredients
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(item => {
+        const name = (item.name || '').toLowerCase();
+        const subname = (item.subname || '').toLowerCase();
+        const description = (item.description || '').toLowerCase();
+        const category = (item.category || '').toLowerCase();
+        
+        // Search in ingredients
+        const ingredientNames = item.ingredients.map(ing => {
+          const ingredientItem = items.find(itm => itm._id === (ing.itemId._id || ing.itemId));
+          return ingredientItem ? ingredientItem.name.toLowerCase() : '';
+        }).join(' ');
+        
+        return name.includes(searchLower) ||
+               subname.includes(searchLower) ||
+               description.includes(searchLower) ||
+               category.includes(searchLower) ||
+               ingredientNames.includes(searchLower);
+      });
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(item => item.category === categoryFilter);
+    }
+
+    // Profit filter
+    if (profitFilter !== 'all') {
+      filtered = filtered.filter(item => {
+        const sellPrice = Number(item.sellPrice) || 0;
+        const totalCost = Number(item.totalCost) || 0;
+        const profit = sellPrice - totalCost;
+        
+        if (profitFilter === 'profitable') {
+          return profit >= 0;
+        } else if (profitFilter === 'loss') {
+          return profit < 0;
+        }
+        return true;
+      });
+    }
+
+    setFilteredMenuItems(filtered);
+  }, [menuItems, items, searchTerm, categoryFilter, profitFilter]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -390,6 +446,98 @@ export default function MenuManagement() {
         </Card>
       </div>
 
+      {/* Search and Filters */}
+      <Card title="Search & Filters">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Search Bar */}
+          <div className="lg:col-span-2">
+            <label className="block text-sm font-medium text-slate-300 mb-2">Search Recipes</label>
+            <div className="relative">
+              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name, description, category, ingredients..."
+                className="w-full bg-slate-800 border border-slate-700 rounded px-10 py-2 text-white placeholder-slate-400 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          {/* Category Filter */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Category</label>
+            <select
+              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="all">All Categories</option>
+              <option value="Main Dish">Main Dish</option>
+              <option value="Beverage">Beverage</option>
+              <option value="Dessert">Dessert</option>
+              <option value="Side Dish">Side Dish</option>
+              <option value="Soups">Soups</option>
+              <option value="Bakery">Bakery</option>
+              <option value="Salads">Salads</option>
+              <option value="Pancakes - Savory">Pancakes - Savory</option>
+              <option value="Pancakes - Sweets">Pancakes - Sweets</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          {/* Profit Filter */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Profitability</label>
+            <select
+              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+              value={profitFilter}
+              onChange={(e) => setProfitFilter(e.target.value)}
+            >
+              <option value="all">All Items</option>
+              <option value="profitable">Profitable Items</option>
+              <option value="loss">Loss Making Items</option>
+            </select>
+          </div>
+        </div>
+        
+        {/* Results Summary */}
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+          <div className="text-sm text-slate-400">
+            Showing <span className="font-medium text-white">{filteredMenuItems.length}</span> of <span className="font-medium text-white">{menuItems.length}</span> menu items
+            {searchTerm && (
+              <span className="text-primary-400"> matching "{searchTerm}"</span>
+            )}
+            {categoryFilter !== 'all' && (
+              <span className="text-orange-400"> in {categoryFilter}</span>
+            )}
+            {profitFilter !== 'all' && (
+              <span className="text-green-400"> ({profitFilter === 'profitable' ? 'profitable' : 'loss making'})</span>
+            )}
+          </div>
+          
+          {(searchTerm || categoryFilter !== 'all' || profitFilter !== 'all') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setCategoryFilter('all');
+                setProfitFilter('all');
+              }}
+              className="text-sm text-red-400 hover:text-red-300 font-medium"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+        
+        {filteredMenuItems.length === 0 && menuItems.length > 0 && (
+          <div className="mt-4 text-center py-8">
+            <div className="text-slate-400 text-lg mb-2">No recipes found</div>
+            <div className="text-sm text-slate-500">Try adjusting your search terms or filters</div>
+          </div>
+        )}
+      </Card>
+
       {/* Menu Items Table */}
       <Card title="Menu Items" className="overflow-hidden">
         {loading ? (
@@ -397,7 +545,7 @@ export default function MenuManagement() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
           </div>
         ) : (
-          <Table data={menuItems} columns={columns} />
+          <Table data={filteredMenuItems} columns={columns} />
         )}
       </Card>
 
