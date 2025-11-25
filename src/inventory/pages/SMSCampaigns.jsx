@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { PlusIcon, PaperAirplaneIcon, EyeIcon, TrashIcon, ChatBubbleLeftEllipsisIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PaperAirplaneIcon, EyeIcon, TrashIcon, ChatBubbleLeftEllipsisIcon, UsersIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
 import Card from '../components/ui/Card';
 import Table from '../components/ui/Table';
 import Modal from '../components/ui/Modal';
+import CustomerManagement from '../components/CustomerManagement';
 
 export default function SMSCampaigns() {
   const [campaigns, setCampaigns] = useState([]);
@@ -11,6 +12,7 @@ export default function SMSCampaigns() {
   const [analytics, setAnalytics] = useState({});
   const [open, setOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [customerMgmtOpen, setCustomerMgmtOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -251,14 +253,24 @@ export default function SMSCampaigns() {
       <Card 
         title="SMS Campaigns" 
         actions={
-          <button 
-            className="px-3 py-2 rounded bg-primary-600 hover:bg-primary-700 text-white flex items-center gap-2"
-            onClick={() => setOpen(true)}
-            disabled={loading}
-          >
-            <PlusIcon className="w-4 h-4" />
-            Create Campaign
-          </button>
+          <div className="flex gap-2">
+            <button 
+              className="px-3 py-2 rounded bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+              onClick={() => setCustomerMgmtOpen(true)}
+              disabled={loading}
+            >
+              <UsersIcon className="w-4 h-4" />
+              Manage Customers
+            </button>
+            <button 
+              className="px-3 py-2 rounded bg-primary-600 hover:bg-primary-700 text-white flex items-center gap-2"
+              onClick={() => setOpen(true)}
+              disabled={loading}
+            >
+              <PlusIcon className="w-4 h-4" />
+              Create Campaign
+            </button>
+          </div>
         }
       >
         <Table
@@ -445,6 +457,13 @@ export default function SMSCampaigns() {
           </div>
         )}
       </Modal>
+
+      {/* Customer Management Modal */}
+      <CustomerManagement
+        isOpen={customerMgmtOpen}
+        onClose={() => setCustomerMgmtOpen(false)}
+        onCustomersUpdated={load}
+      />
     </div>
   );
 }
