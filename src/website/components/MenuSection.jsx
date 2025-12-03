@@ -376,7 +376,7 @@ const MenuSection = ({ onAddToCart }) => {
                 <p className="text-gray-300 text-sm leading-relaxed mb-6 line-clamp-3">
                   {item.description}
                 </p>
-
+   {/* 
                 <Button
                   onClick={() => handleAddToCart(item)}
                   disabled={loadingItems[item.id] || item.isOutOfStock}
@@ -403,6 +403,7 @@ const MenuSection = ({ onAddToCart }) => {
                     </>
                   )}
                 </Button>
+                */}
               </div>
               </div>
             </div>
@@ -468,6 +469,7 @@ const MenuSection = ({ onAddToCart }) => {
                   </div>
                   <div className="text-right">
                     <p className="text-3xl font-bold text-white">Rs. {selectedImage.price}</p>
+                       {/* Image info overlay */}
                     <Button
                       onClick={() => {
                         handleAddToCart(selectedImage);
