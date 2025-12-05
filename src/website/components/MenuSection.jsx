@@ -376,7 +376,7 @@ const MenuSection = ({ onAddToCart }) => {
                 <p className="text-gray-300 text-sm leading-relaxed mb-6 line-clamp-3">
                   {item.description}
                 </p>
-
+{/*
                 <Button
                   onClick={() => handleAddToCart(item)}
                   disabled={loadingItems[item.id] || item.isOutOfStock}
@@ -403,6 +403,7 @@ const MenuSection = ({ onAddToCart }) => {
                     </>
                   )}
                 </Button>
+                */}
               </div>
               </div>
             </div>
