@@ -142,7 +142,12 @@ const RestaurantFooter = () => {
             {/* Professional Copyright */}
             <div className="text-center md:text-left animate-fade-in-up">
               <p className="text-gray-400">
-                © 2025 Restaurants By Ronan 
+                © 2025 Restaurants By Ronan |             <a 
+              href="/inventory"
+              className="font-medium text-gray-400 hover:text-blue-400 transition-smooth hover-scale hover-glow text-sm"
+            >
+              Staff Portal
+            </a>
               </p>
               <p className="text-gray-500 text-sm mt-1 flex items-center justify-center md:justify-start">
                 <span>Powered by Ronan Group IT Team</span>

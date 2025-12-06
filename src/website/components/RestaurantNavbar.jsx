@@ -89,12 +89,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
             >
               Menu
             </button>
-            <a 
-              href="/inventory"
-              className="font-medium text-gray-400 hover:text-blue-400 transition-smooth hover-scale hover-glow text-sm"
-            >
-              Staff Portal
-            </a>
+
 
             {/* Professional Dark Table Selection Dropdown */}
             <div className="relative">
