@@ -3,22 +3,20 @@
  */
 
 /**
- * Format a number to display with maximum 3 decimal places, removing unnecessary trailing zeros
+ * Format a number to display with exactly 3 decimal places for weights/quantities
+ * This ensures consistency when displaying kg, g, l, ml values
  * @param {number} value - The number to format
- * @param {number} maxDecimals - Maximum decimal places (default: 3)
- * @returns {string} - Formatted number string
+ * @param {number} decimals - Decimal places (default: 3 for weights)
+ * @returns {string} - Formatted number string with fixed decimal places
  */
-export const formatQuantity = (value, maxDecimals = 3) => {
+export const formatQuantity = (value, decimals = 3) => {
   if (value === null || value === undefined || isNaN(value)) {
-    return '0';
+    return '0.000';
   }
   
-  // Round to max decimal places to avoid floating point precision issues
-  const multiplier = Math.pow(10, maxDecimals);
-  const rounded = Math.round(value * multiplier) / multiplier;
-  
-  // Format with up to maxDecimals places, removing trailing zeros
-  return rounded.toFixed(maxDecimals).replace(/\.?0+$/, '');
+  // Always show exactly 3 decimal places for weight/quantity consistency
+  // This prevents confusion like showing "29.6 kg" when it's actually "29.600 kg"
+  return Number(value).toFixed(decimals);
 };
 
 /**
