@@ -576,6 +576,7 @@ export default function Inventory() {
 
       {/* Analytics Overview */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/*
         <Card>
           <div className="text-slate-400 text-sm">Total Items</div>
           <div className="text-2xl font-bold">{(inventoryValue?.totalItems || 0) + packingItems.length}</div>
@@ -583,6 +584,7 @@ export default function Inventory() {
             {items.length} inventory + {packingItems.length} packing
           </div>
         </Card>
+        */}
         <Card>
           <div className="text-slate-400 text-sm">Total Value</div>
           <div className="text-2xl font-bold text-primary">LKR {((inventoryValue?.totalValue || 0) + packingItems.reduce((sum, item) => sum + (item.quantity * item.price), 0)).toLocaleString()}</div>

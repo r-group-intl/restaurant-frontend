@@ -5,13 +5,10 @@ import RestaurantNavbar from './components/RestaurantNavbar';
 import RestaurantFooter from './components/RestaurantFooter';
 import ScrollToTop from './components/ScrollToTop';
 import CartModal from './components/CartModal';
-import WebsiteLogin from './components/WebsiteLogin';
 import TableSelection from './components/TableSelection';
-import { useWebsiteAuth } from './hooks/useWebsiteAuth';
 import './index.css';
 
 function WebsiteApp() {
-  const { user, loading: authLoading, isAuthenticated, login } = useWebsiteAuth();
   const [cart, setCart] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -19,9 +16,6 @@ function WebsiteApp() {
   const [isTableLocked, setIsTableLocked] = useState(false);
 
   useEffect(() => {
-    // Only proceed if user is authenticated
-    if (!isAuthenticated) return;
-
     // Check URL for table parameter (QR code support)
     const urlParams = new URLSearchParams(window.location.search);
     const tableParam = urlParams.get('table');
@@ -61,7 +55,7 @@ function WebsiteApp() {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated]);
+  }, []);
 
   const handleAddToCart = (item) => {
     setCart(prevCart => {
@@ -104,28 +98,6 @@ function WebsiteApp() {
       localStorage.setItem('website_table_preference', newTableNumber.toString());
     }
   };
-
-  const handleLoginSuccess = (userData, token) => {
-    login(userData, token);
-  };
-
-  // Show loading screen while checking authentication
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-red-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg font-medium">Loading Restaurants By Ronan...</p>
-          <p className="text-gray-400 text-sm mt-2">CRAVE INTERNATIONALLY ENJOY LOCALLY</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show login form if not authenticated
-  if (!isAuthenticated) {
-    return <WebsiteLogin onLoginSuccess={handleLoginSuccess} />;
-  }
 
   // Show loading screen while initializing
   if (isLoading) {
