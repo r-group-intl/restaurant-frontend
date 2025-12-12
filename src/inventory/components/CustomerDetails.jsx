@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { User, Phone, MapPin, Car, Truck } from 'lucide-react';
+import { User, Phone, MapPin, Car, Truck, Loader2 } from 'lucide-react';
+import { api } from '../../lib/api';
+import { toast } from 'react-hot-toast';
 
 const CustomerDetails = ({ 
   customerDetails, 
@@ -16,6 +18,9 @@ const CustomerDetails = ({
     deliveryOrderNumber: '',
     ...customerDetails
   });
+  
+  const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
+  const [customerFound, setCustomerFound] = useState(false);
 
   const orderTypes = [
     {
@@ -56,6 +61,65 @@ const CustomerDetails = ({
       orderType: orderType || prev.orderType
     }));
   }, [customerDetails, orderType]);
+  
+  // Auto-fetch customer name when valid mobile number is entered
+  useEffect(() => {
+    const fetchCustomerByPhone = async () => {
+      const mobile = formData.customerMobile;
+      
+      // Only fetch if mobile is valid and name is empty
+      if (!validateMobileNumber(mobile) || !mobile) {
+        setCustomerFound(false);
+        return;
+      }
+      
+      setIsSearchingCustomer(true);
+      setCustomerFound(false);
+      
+      try {
+        const response = await api.get(`/campaigns/customers/search?phone=${mobile}`);
+        
+        if (response.data.found && response.data.customer) {
+          const customer = response.data.customer;
+          
+          // Auto-fill customer name if it's empty
+          if (!formData.customerName) {
+            const updatedData = {
+              ...formData,
+              customerName: customer.name
+            };
+            setFormData(updatedData);
+            onDetailsChange(updatedData);
+            setCustomerFound(true);
+            
+            toast.success(`Welcome back, ${customer.name}! 👋`, {
+              duration: 3000,
+              icon: '🎉',
+              style: {
+                borderRadius: '10px',
+                background: '#1f2937',
+                color: '#fff',
+              },
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching customer:', error);
+        // Silent fail - don't show error to user as this is optional
+      } finally {
+        setIsSearchingCustomer(false);
+      }
+    };
+    
+    // Debounce the API call
+    const timeoutId = setTimeout(() => {
+      if (formData.customerMobile && formData.customerMobile.length === 10) {
+        fetchCustomerByPhone();
+      }
+    }, 800); // Wait 800ms after user stops typing
+    
+    return () => clearTimeout(timeoutId);
+  }, [formData.customerMobile]);
 
   const handleInputChange = (field, value) => {
     const newFormData = {
@@ -177,24 +241,35 @@ const CustomerDetails = ({
               onChange={(e) => {
                 const formatted = formatPhoneNumber(e.target.value);
                 handleInputChange('customerMobile', formatted);
+                setCustomerFound(false); // Reset found status when user types
               }}
               placeholder="07X XXX XXXX (optional)"
-              className={`w-full pl-10 pr-4 py-2 bg-slate-700 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:border-blue-500 ${
+              className={`w-full pl-10 pr-10 py-2 bg-slate-700 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:border-blue-500 ${
                 formData.customerMobile && !isMobileValid
                   ? 'border-red-500 focus:ring-red-500'
+                  : customerFound
+                  ? 'border-green-500 focus:ring-green-500'
                   : 'border-slate-600 focus:ring-blue-500'
               }`}
               maxLength="10"
             />
+            {isSearchingCustomer && (
+              <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-blue-400 animate-spin" />
+            )}
           </div>
           {formData.customerMobile && !isMobileValid && (
             <p className="text-red-400 text-xs mt-1">
               Please enter a valid Sri Lankan mobile number (07X XXX XXXX)
             </p>
           )}
-          {formData.customerMobile && isMobileValid && (
+          {formData.customerMobile && isMobileValid && !customerFound && !isSearchingCustomer && (
             <p className="text-green-400 text-xs mt-1">
               ✓ Valid mobile number
+            </p>
+          )}
+          {customerFound && (
+            <p className="text-green-400 text-xs mt-1 flex items-center gap-1">
+              ✓ Existing customer found - Name auto-filled
             </p>
           )}
         </div>
