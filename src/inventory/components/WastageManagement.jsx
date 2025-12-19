@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import api from '../services/api';
 import { convertUnit, getCompatibleUnits, formatUnit } from '../utils/unitConversion';
+import { formatQuantity, formatPrice } from '../utils/numberUtils';
 import { useAuth } from '../hooks/useAuth';
 import {
   TrashIcon,
@@ -138,6 +139,27 @@ const WastageManagement = () => {
     if (!newWastage.itemId || !newWastage.quantity) {
       toast.error('Please select an item and enter quantity');
       return;
+    }
+
+    // Validate quantity for inventory items with unit conversion
+    if (newWastage.type === 'inventory' && selectedItem) {
+      try {
+        const wastageQty = parseFloat(newWastage.quantity);
+        const stockQty = selectedItem.quantity;
+        const wastageUnit = newWastage.unit;
+        const stockUnit = selectedItem.unit;
+
+        // Convert wastage quantity to stock unit for comparison
+        const wastageInStockUnit = convertUnit(wastageQty, wastageUnit, stockUnit);
+        
+        if (wastageInStockUnit > stockQty) {
+          toast.error(`Wastage quantity (${formatQuantity(wastageInStockUnit)} ${stockUnit}) exceeds available stock (${formatQuantity(stockQty)} ${stockUnit})`);
+          return;
+        }
+      } catch (conversionError) {
+        toast.error(`Unit conversion error: ${conversionError.message}`);
+        return;
+      }
     }
 
     try {
@@ -304,7 +326,7 @@ const WastageManagement = () => {
                   <ScaleIcon className="w-8 h-8 text-yellow-400" />
                   <div>
                     <h3 className="text-white font-semibold">Today's Wastage</h3>
-                    <p className="text-slate-300">{todayTotal.toFixed(2)} kg</p>
+                    <p className="text-slate-300">{formatQuantity(todayTotal)} kg</p>
                   </div>
                 </div>
               </div>
@@ -315,10 +337,9 @@ const WastageManagement = () => {
                   <div>
                     <h3 className="text-white font-semibold">Value Lost Today</h3>
                     <p className="text-slate-300">
-                      LKR {wastageEntries
-                        .filter(entry => new Date(entry.createdAt).toDateString() === new Date().toDateString())
-                        .reduce((sum, entry) => sum + (entry.valueLost || (entry.quantity * entry.pricePerKg) || 0), 0)
-                        .toFixed(2)}
+                      LKR {formatPrice(wastageEntries
+                        .filter(e => new Date(e.createdAt).toDateString() === new Date().toDateString())
+                        .reduce((sum, entry) => sum + (entry.valueLost || (entry.quantity * entry.pricePerKg) || 0), 0))}
                     </p>
                   </div>
                 </div>
@@ -330,10 +351,9 @@ const WastageManagement = () => {
                   <div>
                     <h3 className="text-white font-semibold">Potential Revenue</h3>
                     <p className="text-slate-300">
-                      LKR {wastageEntries
-                        .filter(entry => new Date(entry.createdAt).toDateString() === new Date().toDateString())
-                        .reduce((sum, entry) => sum + (entry.quantity * entry.pricePerKg), 0)
-                        .toFixed(2)}
+                      LKR {formatPrice(wastageEntries
+                        .filter(e => new Date(e.createdAt).toDateString() === new Date().toDateString())
+                        .reduce((sum, entry) => sum + (entry.quantity * entry.pricePerKg), 0))}
                     </p>
                   </div>
                 </div>
@@ -396,13 +416,13 @@ const WastageManagement = () => {
                             {entry.itemName}
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-300">
-                            {entry.quantity} {formatUnit(entry.unit)}
+                            {formatQuantity(entry.quantity)} {formatUnit(entry.unit)}
                           </td>
                           <td className="px-4 py-3 text-sm text-red-400 font-medium">
                             {entry.valueLost ? (
-                              `LKR ${entry.valueLost.toFixed(2)}`
+                              `LKR ${formatPrice(entry.valueLost)}`
                             ) : (
-                              `LKR ${((entry.quantity || 0) * (entry.pricePerKg || 0)).toFixed(2)}`
+                              `LKR ${formatPrice((entry.quantity || 0) * (entry.pricePerKg || 0))}`
                             )}
                           </td>
                         </tr>
@@ -474,7 +494,7 @@ const WastageManagement = () => {
                   <option value="">Choose an item...</option>
                   {(newWastage.type === 'inventory' ? inventoryItems : menuItems).map((item) => (
                     <option key={item._id} value={item._id}>
-                      {item.name} {newWastage.type === 'inventory' && `(Available: ${item.quantity} ${item.unit})`}
+                      {item.name} {newWastage.type === 'inventory' && `(Available: ${formatQuantity(item.quantity)} ${item.unit})`}
                     </option>
                   ))}
                 </select>
@@ -493,7 +513,7 @@ const WastageManagement = () => {
                       <>
                         <div>
                           <span className="text-slate-400">Available:</span>
-                          <div className="text-white font-medium">{selectedItem.quantity} {selectedItem.unit}</div>
+                          <div className="text-white font-medium">{formatQuantity(selectedItem.quantity)} {selectedItem.unit}</div>
                         </div>
                         <div>
                           <span className="text-slate-400">Unit Price:</span>
@@ -524,9 +544,8 @@ const WastageManagement = () => {
                 </label>
                 <input
                   type="number"
-                  step="0.01"
+                  step="0.001"
                   min="0"
-                  max={newWastage.type === 'inventory' && selectedItem ? selectedItem.quantity : undefined}
                   value={newWastage.quantity}
                   onChange={(e) => setNewWastage({...newWastage, quantity: e.target.value})}
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white focus:border-red-500 focus:outline-none"
@@ -535,7 +554,7 @@ const WastageManagement = () => {
                 />
                 {newWastage.type === 'inventory' && selectedItem && (
                   <p className="text-xs text-slate-400 mt-1">
-                    Maximum available: {selectedItem.quantity} {selectedItem.unit}
+                    Maximum available: {formatQuantity(selectedItem.quantity)} {selectedItem.unit}
                   </p>
                 )}
               </div>
@@ -715,7 +734,7 @@ const WastageManagement = () => {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-300">
-                          {entry.quantity} {formatUnit(entry.unit)}
+                          {formatQuantity(entry.quantity)} {formatUnit(entry.unit)}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -729,9 +748,9 @@ const WastageManagement = () => {
                         </td>
                         <td className="px-4 py-3 text-sm text-red-400 font-medium">
                           {entry.valueLost ? (
-                            `LKR ${entry.valueLost.toFixed(2)}`
+                            `LKR ${formatPrice(entry.valueLost)}`
                           ) : (
-                            `LKR ${((entry.quantity || 0) * (entry.pricePerKg || 0)).toFixed(2)}`
+                            `LKR ${formatPrice((entry.quantity || 0) * (entry.pricePerKg || 0))}`
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-400">
