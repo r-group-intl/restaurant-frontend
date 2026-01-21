@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { PlusIcon, PaperAirplaneIcon, EyeIcon, TrashIcon, ChatBubbleLeftEllipsisIcon, UsersIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
 import Card from '../components/ui/Card';
-import Table from '../components/ui/Table';
+import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 import CustomerManagement from '../components/CustomerManagement';
 
@@ -273,10 +273,12 @@ export default function SMSCampaigns() {
           </div>
         }
       >
-        <Table
-          columns={campaignColumns}
+        <DataTable
           data={campaigns}
-          empty="No campaigns found. Create your first campaign!"
+          columns={campaignColumns}
+          defaultPageSize={10}
+          pageSizeOptions={[10, 25, 50]}
+          searchPlaceholder="Search campaigns..."
         />
       </Card>
 

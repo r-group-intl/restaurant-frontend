@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import Card from '../components/ui/Card';
-import Table from '../components/ui/Table';
+import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 import { useDomain } from '../context/DomainContext';
 import { ShoppingCart, Edit, Trash2, RefreshCw } from "lucide-react";
@@ -32,6 +32,8 @@ export default function Inventory() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [editingBatchId, setEditingBatchId] = useState(null); // Track first batch when editing
+  const [editingBatches, setEditingBatches] = useState([]); // Store all batches for editing
   const [purchasingItem, setPurchasingItem] = useState(null);
   const [selectedItemBatches, setSelectedItemBatches] = useState([]);
   const [batchAnalytics, setBatchAnalytics] = useState(null);
@@ -169,12 +171,40 @@ export default function Inventory() {
       };
 
       if (editingItem) {
+        // If editing batch-tracked items, update all batches first
+        if (editingBatches.length > 0 && itemFormData.trackExpiry) {
+          try {
+            // Update each batch
+            const batchUpdatePromises = editingBatches.map(batch => 
+              api.put(`/batches/${batch._id}`, {
+                quantity: batch.quantity,
+                expiryDate: batch.expiryDate
+              })
+            );
+            
+            await Promise.all(batchUpdatePromises);
+            
+            // Calculate total quantity from batches
+            const newTotalQuantity = editingBatches.reduce((sum, b) => sum + (parseFloat(b.quantity) || 0), 0);
+            submitData.quantity = newTotalQuantity;
+            
+            console.log(`Successfully updated ${editingBatches.length} batches. Total quantity: ${newTotalQuantity}`);
+          } catch (batchError) {
+            console.error('Error updating batches:', batchError);
+            const errorMsg = batchError.response?.data?.error || batchError.message || 'Unknown error';
+            alert(`Batch update failed: ${errorMsg}\n\nPlease check your connection and try again.`);
+            return; // Don't proceed with item update if batch update fails
+          }
+        }
+        
         await api.put(`/items/${editingItem._id}`, submitData);
       } else {
         await api.post('/items', submitData);
       }
       setShowItemModal(false);
       setEditingItem(null);
+      setEditingBatchId(null);
+      setEditingBatches([]);
       setItemFormData({
         name: '',
         description: '',
@@ -273,8 +303,45 @@ export default function Inventory() {
     }
   };
 
-  const handleEditItem = (item) => {
+  const handleEditItem = async (item) => {
     setEditingItem(item);
+    
+    let expiryDate = '';
+    let batchId = null;
+    let batches = [];
+    let totalBatchQuantity = 0;
+    
+    // If item has batch tracking, fetch all batches
+    if (item.trackExpiry) {
+      try {
+        const response = await api.get(`/batches/item/${item._id}`);
+        if (response.data && response.data.length > 0) {
+          // Store all batches for editing
+          batches = response.data.filter(batch => batch.isActive).map(batch => ({
+            _id: batch._id,
+            quantity: batch.quantity,
+            expiryDate: new Date(batch.expiryDate).toISOString().split('T')[0],
+            batchNumber: batch.batchNumber || 'N/A',
+            purchaseDate: batch.purchaseDate
+          }));
+          
+          // Calculate total from all batches
+          totalBatchQuantity = batches.reduce((sum, b) => sum + (b.quantity || 0), 0);
+          
+          // Get the first batch for backward compatibility
+          const firstBatch = batches[0];
+          if (firstBatch) {
+            batchId = firstBatch._id;
+            expiryDate = firstBatch.expiryDate;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching batches:', error);
+      }
+    }
+    
+    setEditingBatchId(batchId);
+    setEditingBatches(batches);
     setItemFormData({
       name: item.name,
       description: item.description || '',
@@ -290,7 +357,7 @@ export default function Inventory() {
       isPackingItem: item.isPackingItem || false,
       trackExpiry: item.trackExpiry || false,
       defaultShelfLife: item.defaultShelfLife || 7,
-      expiryDate: '',
+      expiryDate: expiryDate,
       batchNumber: ''
     });
     setShowItemModal(true);
@@ -605,23 +672,9 @@ export default function Inventory() {
         </Card>
       </div>
 
-      {/* Search and Filters */}
-      <Card title="Search & Filters">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Search Bar */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Search {activeTab === 'packing' ? 'Packing Items' : 'Items'}
-            </label>
-            <input
-              type="text"
-              placeholder="Search by name, description, or unit..."
-              className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white placeholder-slate-400"
-              value={activeTab === 'packing' ? packingSearchTerm : searchTerm}
-              onChange={(e) => activeTab === 'packing' ? setPackingSearchTerm(e.target.value) : setSearchTerm(e.target.value)}
-            />
-          </div>
-          
+      {/* Search and Filters - Moved to top for better UX */}
+      <Card title="Filters">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Category Filter - Only for inventory items */}
           {activeTab === 'inventory' && (
             <div>
@@ -639,9 +692,6 @@ export default function Inventory() {
             </div>
           )}
           
-          {/* Placeholder for alignment when packing tab is active */}
-          {activeTab === 'packing' && <div></div>}
-          
           {/* Stock Status Filter */}
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Stock Status</label>
@@ -657,30 +707,20 @@ export default function Inventory() {
           </div>
         </div>
         
-        {/* Results Summary */}
-        <div className="mt-4 text-sm text-slate-400">
-          {activeTab === 'inventory' ? (
-            <>
-              Showing {filteredItems.length} of {items.length} inventory items
-              {searchTerm && <span> matching "{searchTerm}"</span>}
-            </>
-          ) : (
-            <>
-              Showing {filteredPackingItems.length} of {packingItems.length} packing items
-              {packingSearchTerm && <span> matching "{packingSearchTerm}"</span>}
-            </>
-          )}
+        {/* Info Note */}
+        <div className="mt-3 text-xs text-slate-500">
+          💡 Use the search box in the table below to find items by name, category, or unit
         </div>
       </Card>
 
-      {/* Expiry Alerts */}
-      {(expiredBatches.length > 0 || nearExpiryBatches.length > 0) && (
+      {/* Expiry and Stock Alerts - Only show for Inventory tab with scrollable sections */}
+      {activeTab === 'inventory' && (expiredBatches.length > 0 || nearExpiryBatches.length > 0 || lowStockItems.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Expired Batches */}
           {expiredBatches.length > 0 && (
             <Card title="🚨 Expired Batches">
-              <div className="space-y-2 mb-4">
-                {expiredBatches.slice(0, 5).map((batch) => (
+              <div className="space-y-2 mb-4 max-h-80 overflow-y-auto pr-2">
+                {expiredBatches.map((batch) => (
                   <div key={batch._id} className="p-3 rounded-md bg-red-500/10 border border-red-500/20">
                     <div className="font-medium text-red-400">{batch.itemId?.name}</div>
                     <div className="text-sm text-slate-300">
@@ -691,11 +731,6 @@ export default function Inventory() {
                     </div>
                   </div>
                 ))}
-                {expiredBatches.length > 5 && (
-                  <div className="text-sm text-slate-400">
-                    +{expiredBatches.length - 5} more expired batches
-                  </div>
-                )}
               </div>
               <button 
                 onClick={handleMarkExpiredAsWastage}
@@ -709,8 +744,8 @@ export default function Inventory() {
           {/* Near Expiry Batches */}
           {nearExpiryBatches.length > 0 && (
             <Card title="⚠️ Near Expiry Batches">
-              <div className="space-y-2">
-                {nearExpiryBatches.slice(0, 5).map((batch) => (
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                {nearExpiryBatches.map((batch) => (
                   <div key={batch._id} className="p-3 rounded-md bg-yellow-500/10 border border-yellow-500/20">
                     <div className="font-medium text-yellow-400">{batch.itemId?.name}</div>
                     <div className="text-sm text-slate-300">
@@ -721,21 +756,16 @@ export default function Inventory() {
                     </div>
                   </div>
                 ))}
-                {nearExpiryBatches.length > 5 && (
-                  <div className="text-sm text-slate-400">
-                    +{nearExpiryBatches.length - 5} more batches expiring soon
-                  </div>
-                )}
               </div>
             </Card>
           )}
         </div>
       )}
 
-      {/* Low Stock Alerts */}
-      {lowStockItems.length > 0 && (
+      {/* Low Stock Alerts - Only for Inventory tab with scrollable section */}
+      {activeTab === 'inventory' && lowStockItems.length > 0 && (
         <Card title="⚠️ Low Stock Alerts">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-2">
             {lowStockItems.map((item) => (
               <div key={item._id} className="p-3 rounded-md bg-red-500/10 border border-red-500/20 flex justify-between items-center">
                 <div>
@@ -756,11 +786,36 @@ export default function Inventory() {
         </Card>
       )}
 
-      {/* Items Table */}
+      {/* Items Table with Professional Features */}
       <Card title={activeTab === 'packing' ? 'Packing Items' : 'Inventory Items'}>
-        <Table 
+        <DataTable 
           data={activeTab === 'packing' ? filteredPackingItems : filteredItems} 
-          columns={columns} 
+          columns={columns}
+          defaultPageSize={10}
+          pageSizeOptions={[10, 25, 50, 100]}
+          searchPlaceholder={`Search ${activeTab === 'packing' ? 'packing items' : 'items'}...`}
+          emptyMessage={`No ${activeTab === 'packing' ? 'packing items' : 'items'} found`}
+          footer={(displayedData) => {
+            const totalValue = displayedData.reduce((sum, item) => 
+              sum + (item.quantity * item.price || 0), 0
+            );
+            const totalItems = displayedData.length;
+            
+            return (
+              <tr className="bg-slate-800">
+                <td colSpan="2" className="px-4 py-3 text-sm font-semibold text-slate-200">
+                  Total
+                </td>
+                <td colSpan={columns.length - 3} className="px-4 py-3 text-sm text-slate-300">
+                  {totalItems} items
+                </td>
+                <td className="px-4 py-3 text-sm font-bold text-green-400 text-right">
+                  LKR {formatPrice(totalValue)}
+                </td>
+                <td></td>
+              </tr>
+            );
+          }}
         />
       </Card>
 
@@ -871,15 +926,23 @@ export default function Inventory() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Initial Quantity</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Initial Quantity
+                <span className="text-xs text-slate-400 ml-1">(in {itemFormData.unit || 'base unit'})</span>
+              </label>
               <input
                 type="number"
                 min="0"
-                step="0.1"
+                step="0.001"
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={itemFormData.quantity}
                 onChange={(e) => setItemFormData({...itemFormData, quantity: parseInventoryNumber(e.target.value)})}
+                placeholder="e.g., 0.200"
               />
+              {editingBatchId && (
+                <div className="text-xs text-blue-400 mt-1">Editing first batch quantity</div>
+              )}
+              <div className="text-xs text-slate-500 mt-1">Will display as: {formatQuantity(itemFormData.quantity)} {itemFormData.unit}</div>
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">Unit Price (LKR)</label>
@@ -893,40 +956,56 @@ export default function Inventory() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Reorder Level</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Reorder Level
+                <span className="text-xs text-slate-400 ml-1">(in {itemFormData.unit || 'base unit'})</span>
+              </label>
               <input
                 type="number"
                 min="0"
-                step="0.1"
+                step="0.001"
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={itemFormData.reorderLevel}
                 onChange={(e) => setItemFormData({...itemFormData, reorderLevel: parseInventoryNumber(e.target.value)})}
+                placeholder="e.g., 0.200"
               />
+              <div className="text-xs text-slate-500 mt-1">Will display as: {formatQuantity(itemFormData.reorderLevel)} {itemFormData.unit}</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Max Order Level</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Max Order Level
+                <span className="text-xs text-slate-400 ml-1">(in {itemFormData.unit || 'base unit'})</span>
+              </label>
               <input
                 type="number"
                 min="0"
-                step="0.1"
+                step="0.001"
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={itemFormData.maxOrderLevel}
                 onChange={(e) => setItemFormData({...itemFormData, maxOrderLevel: parseInventoryNumber(e.target.value)})}
+                placeholder="e.g., 3.000"
               />
+              <div className="text-xs text-slate-500 mt-1">Will display as: {formatQuantity(itemFormData.maxOrderLevel)} {itemFormData.unit}</div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Last Purchased Qty</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Last Purchased Qty
+                <span className="text-xs text-slate-400 ml-1">(in {itemFormData.unit || 'base unit'})</span>
+              </label>
               <input
-                type="number"
-                min="0"
-                step="0.1"
+                type="text"
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
-                value={itemFormData.lastPurchasedQty}
-                onChange={(e) => setItemFormData({...itemFormData, lastPurchasedQty: parseInventoryNumber(e.target.value)})}
+                value={formatQuantity(itemFormData.lastPurchasedQty)}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9.]/g, '');
+                  setItemFormData({...itemFormData, lastPurchasedQty: parseInventoryNumber(value)});
+                }}
+                placeholder="e.g., 1.623"
               />
+              <div className="text-xs text-slate-500 mt-1">Displays as: {formatQuantity(itemFormData.lastPurchasedQty)}</div>
             </div>
           </div>
 
@@ -986,27 +1065,100 @@ export default function Inventory() {
             </div>
 
             {itemFormData.trackExpiry && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Default Shelf Life (days)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
-                    value={itemFormData.defaultShelfLife}
-                    onChange={(e) => setItemFormData({...itemFormData, defaultShelfLife: parseInt(e.target.value) || 1})}
-                  />
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Default Shelf Life (days)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                      value={itemFormData.defaultShelfLife}
+                      onChange={(e) => setItemFormData({...itemFormData, defaultShelfLife: parseInt(e.target.value) || 1})}
+                    />
+                  </div>
+                  
+                  {/* Show expiry date field for new items with quantity */}
+                  {!editingItem && itemFormData.quantity > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Initial Expiry Date</label>
+                      <input
+                        type="date"
+                        className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                        value={itemFormData.expiryDate}
+                        onChange={(e) => setItemFormData({...itemFormData, expiryDate: e.target.value})}
+                      />
+                    </div>
+                  )}
                 </div>
                 
-                {!editingItem && itemFormData.quantity > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Initial Expiry Date</label>
-                    <input
-                      type="date"
-                      className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
-                      value={itemFormData.expiryDate}
-                      onChange={(e) => setItemFormData({...itemFormData, expiryDate: e.target.value})}
-                    />
+                {/* Show batch editor when editing item with batches */}
+                {editingItem && editingBatches.length > 0 && (
+                  <div className="bg-slate-800/50 border border-slate-600 rounded p-4">
+                    <h4 className="text-sm font-medium text-slate-200 mb-3 flex items-center">
+                      <span className="mr-2">📦</span>
+                      Batch Management ({editingBatches.length} batches)
+                      <span className="ml-auto text-xs text-slate-400">Total: {formatQuantity(editingBatches.reduce((sum, b) => sum + (parseFloat(b.quantity) || 0), 0))} {itemFormData.unit}</span>
+                    </h4>
+                    <div className="space-y-3 max-h-60 overflow-y-auto">
+                      {editingBatches.map((batch, index) => (
+                        <div key={batch._id} className="bg-slate-700/50 p-3 rounded border border-slate-600">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-slate-400 mb-1">
+                                Batch #{index + 1} - Quantity ({itemFormData.unit})
+                              </label>
+                              <input
+                                type="number"
+                                step="0.001"
+                                min="0"
+                                className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm"
+                                value={batch.quantity}
+                                onChange={(e) => {
+                                  const newBatches = [...editingBatches];
+                                  newBatches[index].quantity = parseInventoryNumber(e.target.value);
+                                  setEditingBatches(newBatches);
+                                  // Update total quantity display
+                                  const newTotal = newBatches.reduce((sum, b) => sum + (parseFloat(b.quantity) || 0), 0);
+                                  setItemFormData({...itemFormData, quantity: newTotal});
+                                }}
+                              />
+                              <div className="text-xs text-slate-500 mt-1">{formatQuantity(batch.quantity)} {itemFormData.unit}</div>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-400 mb-1">Expiry Date</label>
+                              <input
+                                type="date"
+                                className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm"
+                                value={batch.expiryDate}
+                                onChange={(e) => {
+                                  const newBatches = [...editingBatches];
+                                  newBatches[index].expiryDate = e.target.value;
+                                  setEditingBatches(newBatches);
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="text-xs text-slate-500 mt-2">
+                            Batch: {batch.batchNumber} • Purchased: {new Date(batch.purchaseDate).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 p-2 bg-blue-600/10 border border-blue-600/30 rounded">
+                      <div className="text-xs text-blue-300">
+                        ℹ️ Total quantity is auto-calculated from all batches: <strong>{formatQuantity(editingBatches.reduce((sum, b) => sum + (parseFloat(b.quantity) || 0), 0))} {itemFormData.unit}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Show message if no batches exist for batch-tracked item */}
+                {editingItem && editingBatches.length === 0 && (
+                  <div className="bg-yellow-600/10 border border-yellow-600/30 rounded p-3">
+                    <div className="text-sm text-yellow-300">
+                      ⚠️ No batches found. Purchase new stock to create batches.
+                    </div>
                   </div>
                 )}
               </div>
@@ -1019,6 +1171,8 @@ export default function Inventory() {
               onClick={() => {
                 setShowItemModal(false);
                 setEditingItem(null);
+                setEditingBatchId(null);
+                setEditingBatches([]);
                 setItemFormData({
                   name: '',
                   description: '',
@@ -1110,11 +1264,14 @@ export default function Inventory() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Quantity to Buy</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Quantity to Buy
+                <span className="text-xs text-slate-400 ml-1">(in selected unit)</span>
+              </label>
               <input
                 type="number"
-                min="0.1"
-                step="0.1"
+                min="0.001"
+                step="0.001"
                 required
                 className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2"
                 value={purchaseFormData.quantity}
@@ -1122,6 +1279,7 @@ export default function Inventory() {
                   const newQuantity = parseInventoryNumber(e.target.value);
                   setPurchaseFormData({...purchaseFormData, quantity: newQuantity});
                 }}
+                placeholder="e.g., 1.623"
               />
               {purchaseFormData.purchaseUnit && purchaseFormData.quantity > 0 && (
                 <div className="text-xs text-green-400 mt-1">

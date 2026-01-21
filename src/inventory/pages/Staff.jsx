@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import Card from '../components/ui/Card';
-import Table from '../components/ui/Table';
+import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 import { useDomain } from '../context/DomainContext';
 
@@ -120,7 +120,13 @@ export default function Staff() {
       </div>
 
       <Card>
-        <Table data={staff} columns={columns} />
+        <DataTable 
+          data={staff} 
+          columns={columns}
+          defaultPageSize={10}
+          pageSizeOptions={[10, 25, 50]}
+          searchPlaceholder="Search staff..."
+        />
       </Card>
 
       <Modal 
