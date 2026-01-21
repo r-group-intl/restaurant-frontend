@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import Card from '../components/ui/Card';
-import Table from '../components/ui/Table';
+import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 import { PlusIcon, PencilSquareIcon, TrashIcon, CurrencyDollarIcon, ArrowPathIcon, PhotoIcon, XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { 
@@ -545,7 +545,13 @@ export default function MenuManagement() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
           </div>
         ) : (
-          <Table data={filteredMenuItems} columns={columns} />
+          <DataTable 
+            data={filteredMenuItems} 
+            columns={columns}
+            defaultPageSize={10}
+            pageSizeOptions={[10, 25, 50, 100]}
+            searchPlaceholder="Search menu items..."
+          />
         )}
       </Card>
 

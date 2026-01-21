@@ -285,17 +285,18 @@ export const createCustomPurchaseUnit = (unitName, baseUnit, conversionFactor) =
 };
 
 /**
- * Format quantity for display
+ * Format quantity for display - keeps trailing zeros for user clarity
  */
 const formatQuantity = (value, maxDecimals = 3) => {
   if (value === null || value === undefined || isNaN(value)) {
-    return '0';
+    return '0.000';
   }
   
   const multiplier = Math.pow(10, maxDecimals);
   const rounded = Math.round(value * multiplier) / multiplier;
   
-  return rounded.toFixed(maxDecimals).replace(/\.?0+$/, '');
+  // Keep trailing zeros for better user understanding (e.g., 0.200 instead of 0.2)
+  return rounded.toFixed(maxDecimals);
 };
 
 /**

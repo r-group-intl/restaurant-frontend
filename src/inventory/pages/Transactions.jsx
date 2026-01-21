@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import Card from '../components/ui/Card';
-import Table from '../components/ui/Table';
+import DataTable from '../components/ui/DataTable';
 import { useDomain } from '../context/DomainContext';
 import { ArrowDownTrayIcon, ArrowUpTrayIcon, WrenchScrewdriverIcon, TrashIcon, ArrowsRightLeftIcon, BanknotesIcon, MagnifyingGlassIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 
@@ -375,7 +375,27 @@ export default function Transactions() {
         {loading ? (
           <div className="text-center py-8 text-slate-400">Loading transactions...</div>
         ) : (
-          <Table data={filteredTransactions} columns={columns} />
+          <DataTable 
+            data={filteredTransactions} 
+            columns={columns}
+            defaultPageSize={25}
+            pageSizeOptions={[10, 25, 50, 100]}
+            searchPlaceholder="Search transactions..."
+            footer={(displayedData) => {
+              const totalQuantity = displayedData.reduce((sum, t) => sum + (t.quantity || 0), 0);
+              return (
+                <tr className="bg-slate-800/50">
+                  <td colSpan="3" className="px-6 py-4 text-right font-semibold text-slate-300">
+                    Total Quantity:
+                  </td>
+                  <td className="px-6 py-4 font-semibold text-slate-200">
+                    {totalQuantity.toFixed(3)}
+                  </td>
+                  <td colSpan="3"></td>
+                </tr>
+              );
+            }}
+          />
         )}
         
         {!loading && filteredTransactions.length === 0 && (

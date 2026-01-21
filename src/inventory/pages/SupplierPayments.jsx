@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { PlusIcon, TrashIcon, PencilIcon, EyeIcon, FunnelIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
 import Card from '../components/ui/Card';
-import Table from '../components/ui/Table';
+import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 
 export default function SupplierPayments() {
@@ -344,7 +344,11 @@ export default function SupplierPayments() {
           </div>
         )}
 
-        <Table
+        <DataTable
+          data={payments}
+          defaultPageSize={10}
+          pageSizeOptions={[10, 25, 50, 100]}
+          searchPlaceholder="Search payments..."
           columns={[
             { key: 'supplierName', title: 'Supplier' },
             { key: 'categoryName', title: 'Category' },
@@ -421,7 +425,26 @@ export default function SupplierPayments() {
               )
             }
           ]}
-          data={payments}
+          footer={(displayedData) => {
+            const totalAmount = displayedData.reduce((sum, p) => sum + (p.totalSupplierPrice || 0), 0);
+            const totalPaid = displayedData.filter(p => p.status === 'Paid').reduce((sum, p) => sum + (p.totalSupplierPrice || 0), 0);
+            const totalUnpaid = displayedData.filter(p => p.status === 'Unpaid').reduce((sum, p) => sum + (p.totalSupplierPrice || 0), 0);
+            return (
+              <tr className="bg-slate-800/50">
+                <td colSpan="6" className="px-6 py-4 text-right font-semibold text-slate-300">
+                  Total:
+                </td>
+                <td className="px-6 py-4">
+                  <div className="space-y-1">
+                    <div className="font-semibold text-slate-200">LKR {totalAmount.toLocaleString()}</div>
+                    <div className="text-xs text-green-400">Paid: LKR {totalPaid.toLocaleString()}</div>
+                    <div className="text-xs text-red-400">Unpaid: LKR {totalUnpaid.toLocaleString()}</div>
+                  </div>
+                </td>
+                <td colSpan="2"></td>
+              </tr>
+            );
+          }}
         />
       </Card>
 

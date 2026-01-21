@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import Card from '../components/ui/Card';
-import Table from '../components/ui/Table';
+import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 import { useDomain } from '../context/DomainContext';
 import { Package, Plus, Edit, Trash2, Save, X } from "lucide-react";
@@ -300,7 +300,13 @@ export default function MenuPackingManagement() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Table data={filteredMenuItems} columns={menuColumns} />
+        <DataTable 
+          data={filteredMenuItems} 
+          columns={menuColumns}
+          defaultPageSize={10}
+          pageSizeOptions={[10, 25, 50]}
+          searchPlaceholder="Search menu items..."
+        />
       </Card>
 
       {/* Selected Menu Item Packing Details */}
@@ -328,7 +334,12 @@ export default function MenuPackingManagement() {
           </div>
           
           {currentPackingItems.length > 0 ? (
-            <Table data={currentPackingItems} columns={packingColumns} />
+            <DataTable 
+              data={currentPackingItems} 
+              columns={packingColumns}
+              defaultPageSize={10}
+              pageSizeOptions={[10, 25]}
+            />
           ) : (
             <div className="text-center py-8 text-slate-400">
               No packing items assigned to this menu item yet.
@@ -349,7 +360,13 @@ export default function MenuPackingManagement() {
         <p className="text-slate-400 mb-4">
           Overview of all packing items and their usage across menu items
         </p>
-        <Table data={packingUsageReport} columns={usageReportColumns} />
+        <DataTable 
+          data={packingUsageReport} 
+          columns={usageReportColumns}
+          defaultPageSize={10}
+          pageSizeOptions={[10, 25, 50]}
+          searchPlaceholder="Search packing items..."
+        />
       </Card>
 
       {/* Assign Packing Item Modal */}

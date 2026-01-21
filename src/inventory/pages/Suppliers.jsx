@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { PlusIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
 import api from '../services/api';
 import Card from '../components/ui/Card';
-import Table from '../components/ui/Table';
+import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 
 export default function Suppliers() {
@@ -169,7 +169,11 @@ export default function Suppliers() {
         Add Supplier
       </button>
     }>
-      <Table
+      <DataTable
+        data={rows}
+        defaultPageSize={10}
+        pageSizeOptions={[10, 25, 50]}
+        searchPlaceholder="Search suppliers..."
         columns={[
           { key: 'name', title: 'Name' },
           { key: 'phone', title: 'Phone' },
