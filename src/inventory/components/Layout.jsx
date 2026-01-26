@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useDomain } from '../context/DomainContext';
 import { useAuth } from '../hooks/useAuth';
 import RoleGuard from './RoleGuard';
@@ -165,6 +165,20 @@ export default function Layout({ children }) {
                     <SidebarItem to="categories" label="Categories" icon={<TagIcon className="w-5 h-5" />} />
                     <SidebarItem to="suppliers" label="Suppliers" icon={<TruckIcon className="w-5 h-5" />} />
                     <SidebarItem to="supplier-payments" label="Supplier Payments" icon={<BanknotesIcon className="w-5 h-5" />} />
+                    
+                    <div className="pt-4 pb-2">
+                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                        GRN Management
+                      </div>
+                    </div>
+                    <SidebarItem to="purchase-order" label="Purchase Order / GRN" icon={<ClipboardDocumentListIcon className="w-5 h-5" />} />
+                    <SidebarItem to="grn-report" label="GRN Report" icon={<ChartBarIcon className="w-5 h-5" />} />
+                    
+                    <div className="pt-4 pb-2">
+                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                        Stock Control
+                      </div>
+                    </div>
                     <SidebarItem to="wastage-management" label="Wastage Management" icon={<TrashIcon className="w-5 h-5" />} />
                     <SidebarItem to="out-of-stock" label="Out of Stock" icon={<ExclamationTriangleIcon className="w-5 h-5" />} />
                   </>
@@ -193,10 +207,10 @@ export default function Layout({ children }) {
             <div className="mt-1">
               Logged in as{' '}
               <span className={`font-medium ${getRoleColor(user?.role)}`}>
-                {user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)}
+                {user?.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1)) : 'Guest'}
               </span>
             </div>
-            <div className="mt-1 text-slate-500">{user?.name}</div>
+            <div className="mt-1 text-slate-500">{user?.name || 'Anonymous'}</div>
             <button 
               onClick={handleLogout}
               className="mt-2 inline-flex items-center gap-2 text-xs text-red-400 hover:text-red-300 transition-colors"
@@ -226,14 +240,14 @@ export default function Layout({ children }) {
               </div>
               <div className="flex items-center space-x-2">
                 <div className="text-right">
-                  <div className="text-sm font-medium text-white">{user?.name}</div>
+                  <div className="text-sm font-medium text-white">{user?.name || 'User'}</div>
                   <div className={`text-xs ${getRoleColor(user?.role)}`}>
-                    {user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1)}
+                    {user?.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1)) : 'Guest'}
                   </div>
                 </div>
                 <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
                   <span className="text-sm font-medium text-white">
-                    {user?.name?.charAt(0).toUpperCase() || 'U'}
+                    {(user?.name && user.name.charAt(0).toUpperCase()) || 'U'}
                   </span>
                 </div>
               </div>
@@ -243,7 +257,7 @@ export default function Layout({ children }) {
 
         {/* Page Content */}
         <main className="inventory-content">
-          {children}
+          {children ?? <Outlet />}
         </main>
       </div>
     </div>

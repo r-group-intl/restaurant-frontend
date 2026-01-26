@@ -118,6 +118,12 @@
     @apply transition-colors duration-200;
   }
   
+  .form-textarea {
+    @apply w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white;
+    @apply placeholder-slate-400 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none;
+    @apply transition-colors duration-200 resize-y;
+  }
+  
   .form-label {
     @apply block text-sm font-medium text-slate-300 mb-2;
   }
