@@ -170,7 +170,6 @@ export default function Suppliers() {
       </button>
     }>
       <DataTable
-        data={rows}
         defaultPageSize={10}
         pageSizeOptions={[10, 25, 50]}
         searchPlaceholder="Search suppliers..."

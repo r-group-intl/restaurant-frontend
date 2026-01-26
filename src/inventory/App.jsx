@@ -19,6 +19,8 @@ import MenuAnalytics from './pages/MenuAnalytics';
 import DeliveryManagementPage from './pages/DeliveryManagementPage';
 import DeliveryAnalyticsPage from './pages/DeliveryAnalyticsPage';
 import DeliveryHistoryPage from './pages/DeliveryHistoryPage';
+import PurchaseOrder from './pages/PurchaseOrder';
+import GRNReport from './pages/GRNReport';
 import { withRoleProtection } from './utils/roleProtection.jsx';
 
 // Protected components with role restrictions
@@ -36,6 +38,8 @@ const ProtectedMenuAnalytics = withRoleProtection(MenuAnalytics, ['admin', 'acco
 const ProtectedDeliveryManagement = withRoleProtection(DeliveryManagementPage, ['admin', 'cashier']);
 const ProtectedDeliveryAnalytics = withRoleProtection(DeliveryAnalyticsPage, ['admin', 'accountant']);
 const ProtectedDeliveryHistory = withRoleProtection(DeliveryHistoryPage, ['admin', 'accountant', 'cashier']);
+const ProtectedPurchaseOrder = withRoleProtection(PurchaseOrder, ['admin', 'accountant']);
+const ProtectedGRNReport = withRoleProtection(GRNReport, ['admin', 'accountant']);
 
 function App() {
   const isAuthed = Boolean(localStorage.getItem('token'));
@@ -67,6 +71,8 @@ function App() {
                     <Route path="/delivery-management" element={<ProtectedDeliveryManagement />} />
                     <Route path="/delivery-analytics" element={<ProtectedDeliveryAnalytics />} />
                     <Route path="/delivery-history" element={<ProtectedDeliveryHistory />} />
+                    <Route path="/purchase-order" element={<ProtectedPurchaseOrder />} />
+                    <Route path="/grn-report" element={<ProtectedGRNReport />} />
                   </Routes>
                 </Layout>
               ) : (

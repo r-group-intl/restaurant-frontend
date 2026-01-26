@@ -27,6 +27,8 @@ import OutOfStockManagement from './components/OutOfStockManagement';
 import SMSCampaigns from './pages/SMSCampaigns';
 import RoleBasedRedirect from './components/RoleBasedRedirect';
 import { withRoleProtection } from './utils/roleProtection.jsx';
+import PurchaseOrder from './pages/PurchaseOrder';
+import GRNReport from './pages/GRNReport';
 
 // Protected components with role restrictions
 const ProtectedDashboard = withRoleProtection(Dashboard, ['admin', 'accountant']);
@@ -41,6 +43,10 @@ const ProtectedMenuManagement = withRoleProtection(MenuManagement, ['admin', 'ac
 const ProtectedMenuPackingManagement = withRoleProtection(MenuPackingManagement, ['admin', 'accountant']);
 const ProtectedOldKitchenDashboard = withRoleProtection(OldKitchenDashboard, ['admin', 'accountant', 'kitchen']);
 const ProtectedMenuAnalytics = withRoleProtection(MenuAnalytics, ['admin', 'accountant']);
+
+// GRN Management
+const ProtectedPurchaseOrder = withRoleProtection(PurchaseOrder, ['admin', 'accountant']);
+const ProtectedGRNReport = withRoleProtection(GRNReport, ['admin', 'accountant']);
 
 // New Order Management Dashboards
 const ProtectedCashierDashboard = withRoleProtection(CashierDashboard, ['admin', 'cashier']);
@@ -86,44 +92,45 @@ function InventoryApp() {
       <Routes>
         <Route path="login" element={<Login />} />
         <Route
-          path="/*"
           element={
             isAuthed ? (
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<RoleBasedRedirect />} />
-                  <Route path="dashboard" element={<ProtectedDashboard />} />
-                  <Route path="inventory" element={<ProtectedInventory />} />
-                  <Route path="requests" element={<StockRequests />} />
-                  <Route path="usage" element={<Usage />} />
-                  <Route path="reports" element={<ProtectedReports />} />
-                  <Route path="categories" element={<ProtectedCategories />} />
-                  <Route path="suppliers" element={<ProtectedSuppliers />} />
-                  <Route path="supplier-payments" element={<ProtectedSupplierPayments />} />
-                  <Route path="transactions" element={<ProtectedTransactions />} />
-                  <Route path="staff" element={<ProtectedStaff />} />
-                  <Route path="menu-management" element={<ProtectedMenuManagement />} />
-                  <Route path="menu-packing" element={<ProtectedMenuPackingManagement />} />
-                  <Route path="kitchen-dashboard" element={<ProtectedOldKitchenDashboard />} />
-                  <Route path="menu-analytics" element={<ProtectedMenuAnalytics />} />
-                  <Route path="sms-campaigns" element={<ProtectedSMSCampaigns />} />
-                  
-                  {/* New Order Management Dashboards */}
-                  <Route path="cashier-dashboard" element={<ProtectedCashierDashboard />} />
-                  <Route path="kitchen-orders" element={<ProtectedKitchenOrderDashboard />} />
-                  <Route path="waiter-dashboard" element={<ProtectedWaiterDashboard />} />
-                  <Route path="order-analytics" element={<ProtectedOrderAnalytics />} />
-                  
-                  {/* New Wastage and Stock Management */}
-                  <Route path="wastage-management" element={<ProtectedWastageManagement />} />
-                  <Route path="out-of-stock" element={<ProtectedOutOfStockManagement />} />
-                </Routes>
-              </Layout>
+              <Layout />
             ) : (
               <Navigate to="login" replace />
             )
           }
-        />
+        >
+          <Route index element={<RoleBasedRedirect />} />
+          <Route path="dashboard" element={<ProtectedDashboard />} />
+          <Route path="inventory" element={<ProtectedInventory />} />
+          <Route path="requests" element={<StockRequests />} />
+          <Route path="usage" element={<Usage />} />
+          <Route path="reports" element={<ProtectedReports />} />
+          <Route path="categories" element={<ProtectedCategories />} />
+          <Route path="suppliers" element={<ProtectedSuppliers />} />
+          <Route path="supplier-payments" element={<ProtectedSupplierPayments />} />
+          <Route path="transactions" element={<ProtectedTransactions />} />
+          <Route path="staff" element={<ProtectedStaff />} />
+          <Route path="menu-management" element={<ProtectedMenuManagement />} />
+          <Route path="menu-packing" element={<ProtectedMenuPackingManagement />} />
+          <Route path="kitchen-dashboard" element={<ProtectedOldKitchenDashboard />} />
+          <Route path="menu-analytics" element={<ProtectedMenuAnalytics />} />
+          <Route path="sms-campaigns" element={<ProtectedSMSCampaigns />} />
+
+          {/* GRN Management */}
+          <Route path="purchase-order" element={<ProtectedPurchaseOrder />} />
+          <Route path="grn-report" element={<ProtectedGRNReport />} />
+          
+          {/* New Order Management Dashboards */}
+          <Route path="cashier-dashboard" element={<ProtectedCashierDashboard />} />
+          <Route path="kitchen-orders" element={<ProtectedKitchenOrderDashboard />} />
+          <Route path="waiter-dashboard" element={<ProtectedWaiterDashboard />} />
+          <Route path="order-analytics" element={<ProtectedOrderAnalytics />} />
+          
+          {/* New Wastage and Stock Management */}
+          <Route path="wastage-management" element={<ProtectedWastageManagement />} />
+          <Route path="out-of-stock" element={<ProtectedOutOfStockManagement />} />
+        </Route>
         <Route path="*" element={<div className="p-6">Not Found</div>} />
       </Routes>
     </DomainProvider>
