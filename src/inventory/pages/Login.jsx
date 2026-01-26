@@ -2,8 +2,8 @@ import { useState } from 'react';
 import api from '../services/api';
 
 export default function Login() {
-  const [email, setEmail] = useState('admin@example.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,11 +29,22 @@ export default function Login() {
         {error && <div className="text-red-400 text-sm">{error}</div>}
         <div>
           <label className="block text-sm text-slate-400 mb-1">Email</label>
-          <input className="w-full px-3 py-2 rounded bg-slate-800 border border-slate-700" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input
+            className="w-full px-3 py-2 rounded bg-slate-800 border border-slate-700"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+          />
         </div>
         <div>
           <label className="block text-sm text-slate-400 mb-1">Password</label>
-          <input type="password" className="w-full px-3 py-2 rounded bg-slate-800 border border-slate-700" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input
+            type="password"
+            className="w-full px-3 py-2 rounded bg-slate-800 border border-slate-700"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+          />
         </div>
         <button disabled={loading} className="w-full px-3 py-2 rounded bg-primary-600 text-white">{loading ? 'Signing in…' : 'Sign in'}</button>
       </form>

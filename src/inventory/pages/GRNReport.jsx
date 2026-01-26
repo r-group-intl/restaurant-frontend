@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { EyeIcon, CheckIcon, XMarkIcon, PencilIcon, ArrowPathIcon, FunnelIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
-import axios from 'axios';
 import { useDomain } from '../context/DomainContext';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+import api from '../services/api';
 
 export default function GRNReport() {
   const { domain } = useDomain();
@@ -39,13 +37,7 @@ export default function GRNReport() {
 
   const fetchSuppliers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/suppliers`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'x-domain': domain
-        }
-      });
+      const response = await api.get('/suppliers');
       const data = response.data;
       setSuppliers(Array.isArray(data) ? data : (data?.suppliers || []));
     } catch (error) {
@@ -56,19 +48,12 @@ export default function GRNReport() {
   const fetchGRNs = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
-      const params = new URLSearchParams();
-      Object.keys(filters).forEach(key => {
-        if (filters[key]) params.append(key, filters[key]);
+      const params = {};
+      Object.keys(filters).forEach((key) => {
+        if (filters[key]) params[key] = filters[key];
       });
 
-      const response = await axios.get(`${API_BASE_URL}/api/grn?${params}`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'x-domain': domain
-        }
-      });
+      const response = await api.get('/grn', { params });
 
       setGRNs(response.data.grns || []);
       setError('');
@@ -82,13 +67,7 @@ export default function GRNReport() {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/grn/stats`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'x-domain': domain
-        }
-      });
+      const response = await api.get('/grn/stats');
       setStats(response.data.stats);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -97,13 +76,7 @@ export default function GRNReport() {
 
   const handleViewGRN = async (grnId) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/grn/${grnId}`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'x-domain': domain
-        }
-      });
+      const response = await api.get(`/grn/${grnId}`);
       setSelectedGRN(response.data.grn);
       setShowModal(true);
     } catch (error) {
@@ -116,17 +89,7 @@ export default function GRNReport() {
     if (!confirm('Are you sure you want to approve this GRN?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${API_BASE_URL}/api/grn/${grnId}/approve`,
-        {},
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'x-domain': domain
-          }
-        }
-      );
+      await api.post(`/grn/${grnId}/approve`, {});
       alert('GRN approved successfully');
       fetchGRNs();
       fetchStats();
@@ -140,17 +103,7 @@ export default function GRNReport() {
     if (!confirm('Are you sure you want to update inventory from this GRN? This action cannot be undone.')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${API_BASE_URL}/api/grn/${grnId}/update-inventory`,
-        {},
-        {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'x-domain': domain
-          }
-        }
-      );
+      await api.post(`/grn/${grnId}/update-inventory`, {});
       alert('Inventory updated successfully');
       fetchGRNs();
       fetchStats();
