@@ -1,6 +1,21 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000/api';
+const normalizeBaseUrl = (value) => {
+  if (!value) return '';
+  return value.toString().trim().replace(/\/+$/, '');
+};
+
+const rawBase =
+  import.meta.env.VITE_API_BASE ||
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:4000/api';
+
+let API_BASE = normalizeBaseUrl(rawBase);
+
+// Ensure the inventory API points to the Express /api prefix
+if (API_BASE && !API_BASE.endsWith('/api')) {
+  API_BASE = `${API_BASE}/api`;
+}
 
 const api = axios.create({ 
   baseURL: API_BASE,
@@ -77,10 +92,16 @@ api.interceptors.response.use(
     return response;
   },
   error => {
-    if (error.response && error.response.status === 401 && error.response.data?.expired) {
-      // Token expired, redirect to login
+    const status = error?.response?.status;
+    const requestUrl = error?.config?.url || '';
+
+    // For any 401, clear token and force re-login (avoids silent failures in production)
+    // Skip redirect loops for auth endpoints
+    if (status === 401 && !requestUrl.includes('/auth/login') && !requestUrl.includes('/auth/refresh')) {
       localStorage.removeItem('token');
-      window.location.href = '/inventory/login';
+      if (!window.location.pathname.startsWith('/inventory/login')) {
+        window.location.href = '/inventory/login';
+      }
     }
     return Promise.reject(error);
   }
