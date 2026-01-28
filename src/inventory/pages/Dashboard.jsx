@@ -107,11 +107,11 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Date Range and Period Controls */}
       <Card title="Analytics Controls">
-        <div className="flex items-center gap-4">
-          <div>
+        <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+          <div className="w-full sm:w-56">
             <label className="block text-sm text-slate-400 mb-1">Period</label>
             <select 
-              className="bg-slate-800 border border-slate-700 rounded px-3 py-2"
+              className="form-select"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
             >
@@ -120,27 +120,27 @@ export default function Dashboard() {
               <option value="month">Monthly</option>
             </select>
           </div>
-          <div>
+          <div className="w-full sm:w-56">
             <label className="block text-sm text-slate-400 mb-1">From</label>
             <input 
               type="date" 
-              className="bg-slate-800 border border-slate-700 rounded px-3 py-2"
+              className="form-input"
               value={dateRange.from}
               onChange={(e) => setDateRange({...dateRange, from: e.target.value})}
             />
           </div>
-          <div>
+          <div className="w-full sm:w-56">
             <label className="block text-sm text-slate-400 mb-1">To</label>
             <input 
               type="date" 
-              className="bg-slate-800 border border-slate-700 rounded px-3 py-2"
+              className="form-input"
               value={dateRange.to}
               onChange={(e) => setDateRange({...dateRange, to: e.target.value})}
             />
           </div>
-          <div className="pt-6">
+          <div className="pt-0 lg:pt-6">
             <button 
-              className="px-4 py-2 rounded bg-primary-600 text-white"
+              className="btn-primary w-full lg:w-auto"
               onClick={loadData}
             >
               Refresh

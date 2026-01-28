@@ -161,6 +161,22 @@ const CashierDashboard = () => {
       }
 
       const response = await api.post('/orders', submissionData);
+
+      // Non-blocking warnings (e.g., insufficient packing items)
+      if (Array.isArray(response.data?.warnings) && response.data.warnings.length > 0) {
+        const packingWarning = response.data.warnings.find(w => w.code === 'PACKING_ITEMS_INSUFFICIENT');
+        if (packingWarning) {
+          toast(packingWarning.message || 'Warning: Insufficient packing items', {
+            icon: '⚠️',
+            duration: 6000,
+            style: {
+              borderRadius: '10px',
+              background: '#92400e',
+              color: '#fff',
+            },
+          });
+        }
+      }
       
       const orderTypeDisplay = customerDetails.orderType === 'dine-in' ? 'Dine-in' :
                               customerDetails.orderType === 'takeaway' ? 'Takeaway' :

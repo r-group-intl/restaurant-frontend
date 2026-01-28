@@ -19,8 +19,8 @@ export default function Modal({ isOpen, open, title, children, onClose, classNam
         className={`modal-content ${sizeClasses[size]} ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="inventory-card-header sticky top-0 bg-slate-900 z-10">
-          <div className="font-semibold text-white">{title}</div>
+        <div className="inventory-card-header sticky top-0 bg-card z-10">
+          <div className="font-semibold text-foreground">{title}</div>
           <button 
             onClick={onClose} 
             className="text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg p-1 transition-colors"

@@ -4,9 +4,12 @@ import Card from '../components/ui/Card';
 import DataTable from '../components/ui/DataTable';
 import Modal from '../components/ui/Modal';
 import { useDomain } from '../context/DomainContext';
+import { useAuth } from '../hooks/useAuth';
+import { usePermissions } from '../context/PermissionsContext';
 import { ShoppingCart, Edit, Trash2, RefreshCw } from "lucide-react";
 import { formatQuantity, formatPrice, parseInventoryNumber, safeMultiply } from '../utils/numberUtils';
 import PDFExportButton from '../components/PDFExportButton';
+import { canDo } from '../rbac/permissionUtils';
 import { 
   getPurchaseUnitsForBaseUnit, 
   convertPurchaseToBaseUnit, 
@@ -17,6 +20,15 @@ import {
 
 export default function Inventory() {
   const { domain } = useDomain();
+  const { user } = useAuth();
+  const { permissionsByRole } = usePermissions();
+
+  const role = user?.role;
+  const canCreateItem = canDo(role, permissionsByRole, 'inventory', 'create');
+  const canEditItem = canDo(role, permissionsByRole, 'inventory', 'edit');
+  const canDeleteItem = canDo(role, permissionsByRole, 'inventory', 'delete');
+  const canPurchase = canDo(role, permissionsByRole, 'transactions', 'create');
+  const canSyncQuantities = canDo(role, permissionsByRole, 'inventory', 'edit');
   const [items, setItems] = useState([]);
   const [packingItems, setPackingItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
@@ -304,6 +316,10 @@ export default function Inventory() {
   };
 
   const handleEditItem = async (item) => {
+    if (!canEditItem) {
+      alert('You do not have permission to edit inventory items.');
+      return;
+    }
     setEditingItem(item);
     
     let expiryDate = '';
@@ -364,6 +380,10 @@ export default function Inventory() {
   };
 
   const handleBuyItem = (item) => {
+    if (!canPurchase) {
+      alert('You do not have permission to record purchases.');
+      return;
+    }
     setPurchasingItem(item);
     
     // Calculate default expiry date if item has default shelf life
@@ -420,6 +440,10 @@ export default function Inventory() {
   };
 
   const handleSyncInventory = async () => {
+    if (!canSyncQuantities) {
+      alert('You do not have permission to sync inventory quantities.');
+      return;
+    }
     if (confirm('This will synchronize all inventory quantities with their batch totals. Continue?')) {
       try {
         const response = await api.post('/inventory/repair');
@@ -438,6 +462,10 @@ export default function Inventory() {
   };
 
   const handleDeleteItem = async (id) => {
+    if (!canDeleteItem) {
+      alert('You do not have permission to delete inventory items.');
+      return;
+    }
     if (confirm('Are you sure you want to delete this item?')) {
       try {
         await api.delete(`/items/${id}`);
@@ -520,13 +548,16 @@ export default function Inventory() {
   label: "Actions",
   render: (_, item) => (
     <div className="flex space-x-1">
-      <button
-        onClick={() => handleBuyItem(item)}
-        className="p-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
-        title="Purchase"
-      >
-        <ShoppingCart className="w-3 h-3" />
-      </button>
+      {canPurchase && (
+        <button
+          onClick={() => handleBuyItem(item)}
+          className="p-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
+          title="Purchase"
+          type="button"
+        >
+          <ShoppingCart className="w-3 h-3" />
+        </button>
+      )}
 
       {item.trackExpiry && (
         <button
@@ -538,21 +569,27 @@ export default function Inventory() {
         </button>
       )}
 
-      <button
-        onClick={() => handleEditItem(item)}
-        className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
-        title="Edit"
-      >
-        <Edit className="w-3 h-3" />
-      </button>
+      {canEditItem && (
+        <button
+          onClick={() => handleEditItem(item)}
+          className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
+          title="Edit"
+          type="button"
+        >
+          <Edit className="w-3 h-3" />
+        </button>
+      )}
 
-      <button
-        onClick={() => handleDeleteItem(item._id)}
-        className="p-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
-        title="Delete"
-      >
-        <Trash2 className="w-3 h-3" />
-      </button>
+      {canDeleteItem && (
+        <button
+          onClick={() => handleDeleteItem(item._id)}
+          className="p-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
+          title="Delete"
+          type="button"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      )}
     </div>
   ),
 }
@@ -588,32 +625,38 @@ export default function Inventory() {
             <RefreshCw className="w-4 h-4" />
             <span>Refresh</span>
           </button>
-          <button 
-            onClick={handleSyncInventory}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center space-x-2"
-            title="Synchronize inventory quantities with batch totals"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Sync Quantities</span>
-          </button>
+          {canSyncQuantities && (
+            <button 
+              onClick={handleSyncInventory}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex items-center space-x-2"
+              title="Synchronize inventory quantities with batch totals"
+              type="button"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Sync Quantities</span>
+            </button>
+          )}
           <PDFExportButton 
             inventoryData={preparePDFData()}
             onSuccess={(result) => alert(result.message)}
             onError={(error) => alert(`Error generating PDF: ${error.message}`)}
           />
-          <button 
-            onClick={() => {
-              setItemFormData(prev => ({
-                ...prev,
-                itemType: activeTab === 'packing' ? 'packing' : 'inventory',
-                isPackingItem: activeTab === 'packing'
-              }));
-              setShowItemModal(true);
-            }}
-            className="bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700"
-          >
-            Add New {activeTab === 'packing' ? 'Packing Item' : 'Item'}
-          </button>
+          {canCreateItem && (
+            <button 
+              onClick={() => {
+                setItemFormData(prev => ({
+                  ...prev,
+                  itemType: activeTab === 'packing' ? 'packing' : 'inventory',
+                  isPackingItem: activeTab === 'packing'
+                }));
+                setShowItemModal(true);
+              }}
+              className="bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700"
+              type="button"
+            >
+              Add New {activeTab === 'packing' ? 'Packing Item' : 'Item'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -774,12 +817,15 @@ export default function Inventory() {
                     Stock: {formatQuantity(item.quantity)} {item.unit} • Reorder: {formatQuantity(item.reorderLevel)} {item.unit}
                   </div>
                 </div>
-                <button 
-                  onClick={() => handleBuyItem(item)}
-                  className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-                >
-                  Buy Now
-                </button>
+                {canPurchase && (
+                  <button 
+                    onClick={() => handleBuyItem(item)}
+                    className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                    type="button"
+                  >
+                    Buy Now
+                  </button>
+                )}
               </div>
             ))}
           </div>
