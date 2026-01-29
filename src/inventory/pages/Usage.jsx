@@ -171,7 +171,7 @@ export default function Usage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
         <h1 className="text-2xl font-bold">Kitchen Usage & Goods Out</h1>
         <div className="text-sm text-slate-400">
           Items with usage: {totalItemsWithUsage}
@@ -203,22 +203,22 @@ export default function Usage() {
       {/* Daily Usage Submission */}
       <Card title="Daily Usage Submission">
         <form onSubmit={handleSubmitUsage} className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+            <div className="w-full sm:w-56">
               <label className="block text-sm font-medium text-slate-300 mb-1">Date</label>
               <input
                 type="date"
                 required
-                className="bg-slate-800 border border-slate-700 rounded px-3 py-2"
+                className="form-input"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
               />
             </div>
-            <div className="pt-6">
+            <div className="pt-0 sm:pt-6 w-full sm:w-auto">
               <button 
                 type="submit"
                 disabled={isSubmitting || totalItemsWithUsage === 0}
-                className="px-6 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Submitting...' : `Submit Usage (${totalItemsWithUsage} items)`}
               </button>

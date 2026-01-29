@@ -203,10 +203,17 @@
 /* Global styles */
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+/* Lock document scroll for the Inventory app (Layout.jsx toggles this class). */
+body.inventory-lock {
+  overflow: hidden;
 }
 
 #root {
