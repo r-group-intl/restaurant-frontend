@@ -32,10 +32,15 @@ export const useInventoryPDF = () => {
       const safeInventoryData = {
         items: inventoryData.items || [],
         packingItems: inventoryData.packingItems || [],
+        kitchenItems: inventoryData.kitchenItems || [],
         lowStockItems: inventoryData.lowStockItems || [],
+        lowStockInventoryItems: inventoryData.lowStockInventoryItems || [],
+        lowStockPackingItems: inventoryData.lowStockPackingItems || [],
+        lowStockKitchenItems: inventoryData.lowStockKitchenItems || [],
         expiredBatches: inventoryData.expiredBatches || [],
         nearExpiryBatches: inventoryData.nearExpiryBatches || [],
-        inventoryValue: inventoryData.inventoryValue || { totalValue: 0, totalItems: 0 }
+        inventoryValue: inventoryData.inventoryValue || { totalValue: 0, totalItems: 0 },
+        summary: inventoryData.summary || null
       };
 
       const result = await generateInventoryPDF(safeInventoryData);

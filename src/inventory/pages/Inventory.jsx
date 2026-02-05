@@ -31,13 +31,16 @@ export default function Inventory() {
   const canSyncQuantities = canDo(role, permissionsByRole, 'inventory', 'edit');
   const [items, setItems] = useState([]);
   const [packingItems, setPackingItems] = useState([]);
+  const [kitchenItems, setKitchenItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [filteredPackingItems, setFilteredPackingItems] = useState([]);
+  const [filteredKitchenItems, setFilteredKitchenItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [packingSearchTerm, setPackingSearchTerm] = useState('');
+  const [kitchenSearchTerm, setKitchenSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState('all'); // all, low-stock, in-stock
-  const [activeTab, setActiveTab] = useState('inventory'); // inventory, packing
+  const [activeTab, setActiveTab] = useState('inventory'); // inventory, packing, kitchen
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [showItemModal, setShowItemModal] = useState(false);
@@ -56,6 +59,11 @@ export default function Inventory() {
   const [itemFormData, setItemFormData] = useState({
     name: '',
     description: '',
+    variant: '',
+    size: '',
+    color: '',
+    handleColor: '',
+    location: '',
     quantity: 0,
     unit: '',
     price: 0,
@@ -86,9 +94,10 @@ export default function Inventory() {
 
   const loadData = async () => {
     try {
-      const [itemsRes, packingItemsRes, categoriesRes, suppliersRes, valueRes, batchAnalyticsRes, expiredRes, nearExpiryRes] = await Promise.all([
+      const [itemsRes, packingItemsRes, kitchenItemsRes, categoriesRes, suppliersRes, valueRes, batchAnalyticsRes, expiredRes, nearExpiryRes] = await Promise.all([
         api.get('/items?itemType=inventory'),
         api.get('/items?itemType=packing'),
+        api.get('/items?itemType=kitchen'),
         api.get('/categories'),
         api.get('/suppliers'),
         api.get('/analytics/inventory/value'),
@@ -98,6 +107,7 @@ export default function Inventory() {
       ]);
       setItems(itemsRes.data);
       setPackingItems(packingItemsRes.data);
+      setKitchenItems(kitchenItemsRes.data);
       setCategories(categoriesRes.data);
       setSuppliers(suppliersRes.data);
       setInventoryValue(valueRes.data);
@@ -172,6 +182,29 @@ export default function Inventory() {
 
     setFilteredPackingItems(filtered);
   }, [packingItems, packingSearchTerm, stockFilter]);
+
+  // Filter kitchen items separately
+  useEffect(() => {
+    let filtered = kitchenItems;
+
+    // Search filter for kitchen items
+    if (kitchenSearchTerm) {
+      filtered = filtered.filter(item =>
+        item.name.toLowerCase().includes(kitchenSearchTerm.toLowerCase()) ||
+        item.description?.toLowerCase().includes(kitchenSearchTerm.toLowerCase()) ||
+        item.unit.toLowerCase().includes(kitchenSearchTerm.toLowerCase())
+      );
+    }
+
+    // Stock filter for kitchen items
+    if (stockFilter === 'low-stock') {
+      filtered = filtered.filter(item => item.quantity <= (item.reorderLevel || 0));
+    } else if (stockFilter === 'in-stock') {
+      filtered = filtered.filter(item => item.quantity > (item.reorderLevel || 0));
+    }
+
+    setFilteredKitchenItems(filtered);
+  }, [kitchenItems, kitchenSearchTerm, stockFilter]);
 
   const handleItemSubmit = async (e) => {
     e.preventDefault();
@@ -361,6 +394,11 @@ export default function Inventory() {
     setItemFormData({
       name: item.name,
       description: item.description || '',
+      variant: item.variant || '',
+      size: item.size || '',
+      color: item.color || '',
+      handleColor: item.handleColor || '',
+      location: item.location || '',
       quantity: item.quantity,
       unit: item.unit,
       price: item.price || 0,
@@ -369,7 +407,7 @@ export default function Inventory() {
       lastPurchasedQty: item.lastPurchasedQty || 0,
       categoryId: item.categoryId?._id || '',
       supplierId: item.supplierId?._id || '',
-      itemType: item.isPackingItem ? 'packing' : 'inventory',
+      itemType: item.itemType || (item.isPackingItem ? 'packing' : 'inventory'),
       isPackingItem: item.isPackingItem || false,
       trackExpiry: item.trackExpiry || false,
       defaultShelfLife: item.defaultShelfLife || 7,
@@ -476,140 +514,200 @@ export default function Inventory() {
     }
   };
 
-  const columns = [
-    { key: 'name', label: 'Item Name' },
-    { 
-      key: 'category', 
-      label: 'Category',
-      render: (_, item) => item.categoryId?.name || 'Uncategorized'
-    },
-    { 
-      key: 'supplier', 
-      label: 'Supplier',
-      render: (_, item) => item.supplierId?.name || 'No Supplier'
-    },
-    { 
-      key: 'stock', 
-      label: 'Current Stock',
-      render: (_, item) => (
-        <div className="flex flex-col">
-          <span className={`${item.quantity <= (item.reorderLevel || 0) ? 'text-red-400' : 'text-white'}`}>
-            {formatQuantity(item.quantity)} {item.unit}
-          </span>
-          {item.trackExpiry && (
-            <div className="text-xs text-slate-400">
-              {item.totalBatches > 0 ? `${item.totalBatches} batches` : 'No batches'}
-              {item.nearExpiryCount > 0 && (
-                <span className="text-yellow-400 ml-1">
-                  ({item.nearExpiryCount} near expiry)
-                </span>
-              )}
-              {item.expiredCount > 0 && (
-                <span className="text-red-400 ml-1">
-                  ({item.expiredCount} expired)
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      )
-    },
-    { 
-      key: 'unitPrice', 
-      label: 'Unit Price',
-      render: (_, item) => `LKR ${formatPrice(item.price || 0)}`
-    },
-    { 
-      key: 'value', 
-      label: 'Total Value',
-      render: (_, item) => (
-        <span className="font-medium text-green-400">
-          LKR {formatPrice(safeMultiply(item.quantity || 0, item.price || 0))}
+  const stockColumn = {
+    key: 'stock',
+    label: activeTab === 'kitchen' ? 'Count' : 'Current Stock',
+    render: (_, item) => (
+      <div className="flex flex-col">
+        <span className={`${item.itemType !== 'kitchen' && item.quantity <= (item.reorderLevel || 0) ? 'text-red-400' : 'text-white'}`}>
+          {formatQuantity(item.quantity)} {item.unit}
         </span>
-      )
-    },
+        {item.trackExpiry && (
+          <div className="text-xs text-slate-400">
+            {item.totalBatches > 0 ? `${item.totalBatches} batches` : 'No batches'}
+            {item.nearExpiryCount > 0 && (
+              <span className="text-yellow-400 ml-1">({item.nearExpiryCount} near expiry)</span>
+            )}
+            {item.expiredCount > 0 && (
+              <span className="text-red-400 ml-1">({item.expiredCount} expired)</span>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  };
 
-    { 
-      key: 'reorderLevel', 
-      label: 'Reorder Level',
-      render: (_, item) => `${formatQuantity(item.reorderLevel || 0)} ${item.unit}`
-    },
-    { 
-      key: 'lastPurchasedQty', 
-      label: 'Last Purchased Qty',
-      render: (_, item) => (
-        <span className="text-blue-400">
-          {formatQuantity(item.lastPurchasedQty || 0)} {item.unit}
-        </span>
-      )
-    },
-{
-  key: "actions",
-  label: "Actions",
-  render: (_, item) => (
-    <div className="flex space-x-1">
-      {canPurchase && (
-        <button
-          onClick={() => handleBuyItem(item)}
-          className="p-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
-          title="Purchase"
-          type="button"
-        >
-          <ShoppingCart className="w-3 h-3" />
-        </button>
-      )}
+  const unitPriceColumn = {
+    key: 'unitPrice',
+    label: 'Unit Price',
+    render: (_, item) => `LKR ${formatPrice(item.price || 0)}`
+  };
 
-      {item.trackExpiry && (
-        <button
-          onClick={() => handleViewBatches(item)}
-          className="p-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
-          title="View Batches"
-        >
-          📦
-        </button>
-      )}
+  const valueColumn = {
+    key: 'value',
+    label: 'Total Value',
+    render: (_, item) => (
+      <span className="font-medium text-green-400">
+        LKR {formatPrice(safeMultiply(item.quantity || 0, item.price || 0))}
+      </span>
+    )
+  };
 
-      {canEditItem && (
-        <button
-          onClick={() => handleEditItem(item)}
-          className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
-          title="Edit"
-          type="button"
-        >
-          <Edit className="w-3 h-3" />
-        </button>
-      )}
+  const actionsColumn = {
+    key: "actions",
+    label: "Actions",
+    render: (_, item) => (
+      <div className="flex space-x-1">
+        {canPurchase && item.itemType !== 'kitchen' && (
+          <button
+            onClick={() => handleBuyItem(item)}
+            className="p-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs"
+            title="Purchase"
+            type="button"
+          >
+            <ShoppingCart className="w-3 h-3" />
+          </button>
+        )}
 
-      {canDeleteItem && (
-        <button
-          onClick={() => handleDeleteItem(item._id)}
-          className="p-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
-          title="Delete"
-          type="button"
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
-      )}
-    </div>
-  ),
-}
-  ];
+        {item.trackExpiry && (
+          <button
+            onClick={() => handleViewBatches(item)}
+            className="p-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
+            title="View Batches"
+          >
+            📦
+          </button>
+        )}
+
+        {canEditItem && (
+          <button
+            onClick={() => handleEditItem(item)}
+            className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
+            title="Edit"
+            type="button"
+          >
+            <Edit className="w-3 h-3" />
+          </button>
+        )}
+
+        {canDeleteItem && (
+          <button
+            onClick={() => handleDeleteItem(item._id)}
+            className="p-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs"
+            title="Delete"
+            type="button"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        )}
+      </div>
+    )
+  };
+
+  const columns =
+    activeTab === 'kitchen'
+      ? [
+          { key: 'name', label: 'Item Name' },
+          { key: 'variant', label: 'Variant/Identifier', render: (_, item) => item.variant || '—' },
+          { key: 'size', label: 'Size', render: (_, item) => item.size || '—' },
+          { key: 'color', label: 'Color', render: (_, item) => item.color || '—' },
+          { key: 'handleColor', label: 'Handle', render: (_, item) => item.handleColor || '—' },
+          { key: 'location', label: 'Location', render: (_, item) => item.location || '—' },
+          stockColumn,
+          unitPriceColumn,
+          valueColumn,
+          actionsColumn
+        ]
+      : [
+          { key: 'name', label: 'Item Name' },
+          {
+            key: 'category',
+            label: 'Category',
+            render: (_, item) => item.categoryId?.name || 'Uncategorized'
+          },
+          {
+            key: 'supplier',
+            label: 'Supplier',
+            render: (_, item) => item.supplierId?.name || 'No Supplier'
+          },
+          stockColumn,
+          unitPriceColumn,
+          valueColumn,
+          {
+            key: 'reorderLevel',
+            label: 'Reorder Level',
+            render: (_, item) => `${formatQuantity(item.reorderLevel || 0)} ${item.unit}`
+          },
+          {
+            key: 'lastPurchasedQty',
+            label: 'Last Purchased Qty',
+            render: (_, item) => (
+              <span className="text-blue-400">
+                {formatQuantity(item.lastPurchasedQty || 0)} {item.unit}
+              </span>
+            )
+          },
+          actionsColumn
+        ];
 
   // Prepare data for PDF export
   const preparePDFData = () => {
-    const lowStockItems = [...items, ...packingItems].filter(item => item.quantity <= (item.reorderLevel || 0));
+    const lowStockInventoryItems = items.filter(item => item.quantity <= (item.reorderLevel || 0));
+    const lowStockPackingItems = packingItems.filter(item => item.quantity <= (item.reorderLevel || 0));
+    const lowStockKitchenItems = kitchenItems.filter(item => item.quantity <= (item.reorderLevel || 0));
+    const lowStockItems = [...lowStockInventoryItems, ...lowStockPackingItems, ...lowStockKitchenItems];
+
+    const inventoryTotalValue = items.reduce((sum, item) => sum + safeMultiply(item.quantity || 0, item.price || 0), 0);
+    const packingTotalValue = packingItems.reduce((sum, item) => sum + safeMultiply(item.quantity || 0, item.price || 0), 0);
+    const kitchenTotalValue = kitchenItems.reduce((sum, item) => sum + safeMultiply(item.quantity || 0, item.price || 0), 0);
+    const overallTotalValue = inventoryTotalValue + packingTotalValue + kitchenTotalValue;
     
     return {
       items,
       packingItems,
+      kitchenItems,
       lowStockItems,
+      lowStockInventoryItems,
+      lowStockPackingItems,
+      lowStockKitchenItems,
       expiredBatches,
       nearExpiryBatches,
-      inventoryValue
+      inventoryValue,
+      summary: {
+        inventoryTotalValue,
+        packingTotalValue,
+        kitchenTotalValue,
+        overallTotalValue
+      }
     };
   };
 
-  const lowStockItems = [...items, ...packingItems].filter(item => item.quantity <= (item.reorderLevel || 0));
+  const lowStockInventoryItems = items.filter(item => item.quantity <= (item.reorderLevel || 0));
+  const lowStockPackingItems = packingItems.filter(item => item.quantity <= (item.reorderLevel || 0));
+  const lowStockKitchenItems = kitchenItems.filter(item => item.quantity <= (item.reorderLevel || 0));
+  const lowStockItems = [...lowStockInventoryItems, ...lowStockPackingItems, ...lowStockKitchenItems];
+
+  const inventoryTotalValue = items.reduce((sum, item) => sum + safeMultiply(item.quantity || 0, item.price || 0), 0);
+  const packingTotalValue = packingItems.reduce((sum, item) => sum + safeMultiply(item.quantity || 0, item.price || 0), 0);
+  const kitchenTotalValue = kitchenItems.reduce((sum, item) => sum + safeMultiply(item.quantity || 0, item.price || 0), 0);
+  const overallTotalValue = inventoryTotalValue + packingTotalValue + kitchenTotalValue;
+
+  const activeTabData =
+    activeTab === 'packing'
+      ? filteredPackingItems
+      : activeTab === 'kitchen'
+        ? filteredKitchenItems
+        : filteredItems;
+
+  const activeTabLabel =
+    activeTab === 'packing' ? 'Packing Items' : activeTab === 'kitchen' ? 'Kitchen Items' : 'Inventory Items';
+
+  const lowStockActiveTab =
+    activeTab === 'packing'
+      ? lowStockPackingItems
+      : activeTab === 'kitchen'
+        ? lowStockKitchenItems
+        : lowStockInventoryItems;
 
   return (
     <div className="space-y-6">
@@ -646,15 +744,16 @@ export default function Inventory() {
               onClick={() => {
                 setItemFormData(prev => ({
                   ...prev,
-                  itemType: activeTab === 'packing' ? 'packing' : 'inventory',
-                  isPackingItem: activeTab === 'packing'
+                  itemType: activeTab === 'packing' ? 'packing' : activeTab === 'kitchen' ? 'kitchen' : 'inventory',
+                  isPackingItem: activeTab === 'packing',
+                  unit: activeTab === 'packing' || activeTab === 'kitchen' ? (prev.unit || 'pcs') : prev.unit
                 }));
                 setShowItemModal(true);
               }}
               className="bg-primary-600 text-white px-4 py-2 rounded hover:bg-primary-700"
               type="button"
             >
-              Add New {activeTab === 'packing' ? 'Packing Item' : 'Item'}
+              Add New {activeTab === 'packing' ? 'Packing Item' : activeTab === 'kitchen' ? 'Kitchen Item' : 'Item'}
             </button>
           )}
         </div>
@@ -682,10 +781,20 @@ export default function Inventory() {
         >
           Packing Items ({packingItems.length})
         </button>
+        <button
+          onClick={() => setActiveTab('kitchen')}
+          className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+            activeTab === 'kitchen'
+              ? 'bg-primary-600 text-white'
+              : 'text-slate-400 hover:text-white hover:bg-slate-700'
+          }`}
+        >
+          Kitchen Items ({kitchenItems.length})
+        </button>
       </div>
 
       {/* Analytics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
         {/*
         <Card>
           <div className="text-slate-400 text-sm">Total Items</div>
@@ -696,12 +805,24 @@ export default function Inventory() {
         </Card>
         */}
         <Card>
-          <div className="text-slate-400 text-sm">Total Value</div>
-          <div className="text-2xl font-bold text-primary">LKR {((inventoryValue?.totalValue || 0) + packingItems.reduce((sum, item) => sum + (item.quantity * item.price), 0)).toLocaleString()}</div>
+          <div className="text-slate-400 text-sm">Inventory Value</div>
+          <div className="text-2xl font-bold text-primary">LKR {inventoryTotalValue.toLocaleString()}</div>
+          <div className="text-xs text-slate-500">Low stock: {lowStockInventoryItems.length}</div>
         </Card>
         <Card>
-          <div className="text-slate-400 text-sm">Low Stock Items</div>
-          <div className="text-2xl font-bold text-red-400">{lowStockItems.length}</div>
+          <div className="text-slate-400 text-sm">Packing Value</div>
+          <div className="text-2xl font-bold text-primary">LKR {packingTotalValue.toLocaleString()}</div>
+          <div className="text-xs text-slate-500">Low stock: {lowStockPackingItems.length}</div>
+        </Card>
+        <Card>
+          <div className="text-slate-400 text-sm">Kitchen Value</div>
+          <div className="text-2xl font-bold text-primary">LKR {kitchenTotalValue.toLocaleString()}</div>
+          <div className="text-xs text-slate-500">Low stock: {lowStockKitchenItems.length}</div>
+        </Card>
+        <Card>
+          <div className="text-slate-400 text-sm">Overall Total</div>
+          <div className="text-2xl font-bold text-primary">LKR {overallTotalValue.toLocaleString()}</div>
+          <div className="text-xs text-slate-500">All low stock: {lowStockItems.length}</div>
         </Card>
         <Card>
           <div className="text-slate-400 text-sm">Near Expiry</div>
@@ -757,7 +878,7 @@ export default function Inventory() {
       </Card>
 
       {/* Expiry and Stock Alerts - Only show for Inventory tab with scrollable sections */}
-      {activeTab === 'inventory' && (expiredBatches.length > 0 || nearExpiryBatches.length > 0 || lowStockItems.length > 0) && (
+      {activeTab === 'inventory' && (expiredBatches.length > 0 || nearExpiryBatches.length > 0 || lowStockInventoryItems.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Expired Batches */}
           {expiredBatches.length > 0 && (
@@ -805,19 +926,21 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* Low Stock Alerts - Only for Inventory tab with scrollable section */}
-      {activeTab === 'inventory' && lowStockItems.length > 0 && (
-        <Card title="⚠️ Low Stock Alerts">
+      {/* Low Stock Alerts */}
+      {lowStockActiveTab.length > 0 && (
+        <Card title={`⚠️ Low Stock Alerts (${activeTabLabel})`}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto pr-2">
-            {lowStockItems.map((item) => (
+            {lowStockActiveTab.map((item) => (
               <div key={item._id} className="p-3 rounded-md bg-red-500/10 border border-red-500/20 flex justify-between items-center">
                 <div>
                   <div className="font-medium text-red-400">{item.name}</div>
                   <div className="text-sm text-slate-300">
-                    Stock: {formatQuantity(item.quantity)} {item.unit} • Reorder: {formatQuantity(item.reorderLevel)} {item.unit}
+                    {item.itemType === 'kitchen'
+                      ? `Count: ${formatQuantity(item.quantity)} ${item.unit}`
+                      : `Stock: ${formatQuantity(item.quantity)} ${item.unit} • Reorder: ${formatQuantity(item.reorderLevel)} ${item.unit}`}
                   </div>
                 </div>
-                {canPurchase && (
+                {canPurchase && item.itemType !== 'kitchen' && (
                   <button 
                     onClick={() => handleBuyItem(item)}
                     className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
@@ -833,14 +956,14 @@ export default function Inventory() {
       )}
 
       {/* Items Table with Professional Features */}
-      <Card title={activeTab === 'packing' ? 'Packing Items' : 'Inventory Items'}>
+      <Card title={activeTabLabel}>
         <DataTable 
-          data={activeTab === 'packing' ? filteredPackingItems : filteredItems} 
+          data={activeTabData} 
           columns={columns}
           defaultPageSize={10}
           pageSizeOptions={[10, 25, 50, 100]}
-          searchPlaceholder={`Search ${activeTab === 'packing' ? 'packing items' : 'items'}...`}
-          emptyMessage={`No ${activeTab === 'packing' ? 'packing items' : 'items'} found`}
+          searchPlaceholder={`Search ${activeTab === 'packing' ? 'packing items' : activeTab === 'kitchen' ? 'kitchen items' : 'items'}...`}
+          emptyMessage={`No ${activeTab === 'packing' ? 'packing items' : activeTab === 'kitchen' ? 'kitchen items' : 'items'} found`}
           footer={(displayedData) => {
             const totalValue = displayedData.reduce((sum, item) => 
               sum + (item.quantity * item.price || 0), 0
@@ -886,14 +1009,14 @@ export default function Inventory() {
             isPackingItem: false
           });
         }}
-        title={editingItem ? `Edit ${editingItem.isPackingItem ? 'Packing Item' : 'Item'}` : `Add New ${itemFormData.itemType === 'packing' ? 'Packing Item' : 'Item'}`}
+        title={editingItem ? `Edit ${editingItem.itemType === 'kitchen' ? 'Kitchen Item' : editingItem.isPackingItem ? 'Packing Item' : 'Item'}` : `Add New ${itemFormData.itemType === 'packing' ? 'Packing Item' : itemFormData.itemType === 'kitchen' ? 'Kitchen Item' : 'Item'}`}
       >
         <form onSubmit={handleItemSubmit} className="space-y-4">
           {/* Item Type Selection - Only for new items */}
           {!editingItem && (
             <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
               <label className="block text-sm font-medium text-slate-300 mb-3">Item Type</label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <label className="flex items-center p-3 border border-slate-600 rounded cursor-pointer hover:bg-slate-700">
                   <input
                     type="radio"
@@ -929,6 +1052,25 @@ export default function Inventory() {
                   <div>
                     <div className="font-medium text-slate-200">Packing Item</div>
                     <div className="text-sm text-slate-400">Cups, containers, cutlery, etc.</div>
+                  </div>
+                </label>
+                <label className="flex items-center p-3 border border-slate-600 rounded cursor-pointer hover:bg-slate-700">
+                  <input
+                    type="radio"
+                    name="itemType"
+                    value="kitchen"
+                    checked={itemFormData.itemType === 'kitchen'}
+                    onChange={(e) => setItemFormData({
+                      ...itemFormData,
+                      itemType: e.target.value,
+                      isPackingItem: false,
+                      unit: itemFormData.unit || 'pcs' // Default unit for kitchen items
+                    })}
+                    className="mr-3"
+                  />
+                  <div>
+                    <div className="font-medium text-slate-200">Kitchen Item</div>
+                    <div className="text-sm text-slate-400">Machinery, knives, plates (not auto-deducted)</div>
                   </div>
                 </label>
               </div>
@@ -1001,6 +1143,7 @@ export default function Inventory() {
                 onChange={(e) => setItemFormData({...itemFormData, price: parseInventoryNumber(e.target.value, 2)})}
               />
             </div>
+            {itemFormData.itemType !== 'kitchen' && (
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">
                 Reorder Level
@@ -1017,8 +1160,73 @@ export default function Inventory() {
               />
               <div className="text-xs text-slate-500 mt-1">Will display as: {formatQuantity(itemFormData.reorderLevel)} {itemFormData.unit}</div>
             </div>
+            )}
           </div>
 
+          {itemFormData.itemType === 'kitchen' && (
+            <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
+              <h4 className="text-sm font-medium text-slate-300 mb-3">Kitchen Item Identification</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Variant / Identifier</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                    value={itemFormData.variant}
+                    onChange={(e) => setItemFormData({ ...itemFormData, variant: e.target.value })}
+                    placeholder="e.g., Small black handle whisk"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Location</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                    value={itemFormData.location}
+                    onChange={(e) => setItemFormData({ ...itemFormData, location: e.target.value })}
+                    placeholder="e.g., Kitchen A / Store Room"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Size</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                    value={itemFormData.size}
+                    onChange={(e) => setItemFormData({ ...itemFormData, size: e.target.value })}
+                    placeholder="e.g., Small / Medium / Large"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Color</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                    value={itemFormData.color}
+                    onChange={(e) => setItemFormData({ ...itemFormData, color: e.target.value })}
+                    placeholder="e.g., White / Black"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Handle Color</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2"
+                    value={itemFormData.handleColor}
+                    onChange={(e) => setItemFormData({ ...itemFormData, handleColor: e.target.value })}
+                    placeholder="e.g., Black handle"
+                  />
+                </div>
+              </div>
+              <div className="text-xs text-slate-500 mt-3">
+                Tip: Use Variant + Size + Handle Color to distinguish similar items.
+              </div>
+            </div>
+          )}
+
+          {itemFormData.itemType !== 'kitchen' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">
@@ -1054,8 +1262,9 @@ export default function Inventory() {
               <div className="text-xs text-slate-500 mt-1">Displays as: {formatQuantity(itemFormData.lastPurchasedQty)}</div>
             </div>
           </div>
+          )}
 
-          {domain === 'restaurant' && (
+          {domain === 'restaurant' && itemFormData.itemType !== 'kitchen' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">Category</label>
@@ -1095,6 +1304,7 @@ export default function Inventory() {
           )}
 
           {/* Expiry Tracking */}
+          {itemFormData.itemType !== 'kitchen' && (
           <div className="p-4 bg-slate-800 rounded-lg border border-slate-700">
             <h4 className="text-sm font-medium text-slate-300 mb-3">Expiry Tracking</h4>
             
@@ -1210,6 +1420,7 @@ export default function Inventory() {
               </div>
             )}
           </div>
+          )}
 
           <div className="flex justify-end space-x-2">
             <button 

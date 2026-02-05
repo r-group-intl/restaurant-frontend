@@ -59,23 +59,46 @@ export class InventoryPDFGenerator {
    * Add executive summary section
    */
   addExecutiveSummary(data) {
-    const { items, packingItems, inventoryValue, lowStockItems, expiredBatches, nearExpiryBatches } = data;
+    const {
+      items,
+      packingItems,
+      kitchenItems = [],
+      inventoryValue,
+      lowStockItems,
+      lowStockInventoryItems = [],
+      lowStockPackingItems = [],
+      lowStockKitchenItems = [],
+      expiredBatches,
+      nearExpiryBatches,
+      summary
+    } = data;
 
     this.doc.setFontSize(16);
     this.doc.setFont('helvetica', 'bold');
     this.doc.text('Executive Summary', 15, this.yPosition);
     this.yPosition += 10;
 
-    const totalItems = items.length + packingItems.length;
-    const totalValue = (inventoryValue?.totalValue || 0) + packingItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const totalItems = items.length + packingItems.length + kitchenItems.length;
+
+    const computedInventoryValue = summary?.inventoryTotalValue ?? items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const computedPackingValue = summary?.packingTotalValue ?? packingItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const computedKitchenValue = summary?.kitchenTotalValue ?? kitchenItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const totalValue = summary?.overallTotalValue ?? (computedInventoryValue + computedPackingValue + computedKitchenValue);
+
     const lowStockCount = lowStockItems.length;
     const expiredCount = expiredBatches.length;
     const nearExpiryCount = nearExpiryBatches.length;
 
     const summaryData = [
-      ['Total Items', `${totalItems} (${items.length} inventory + ${packingItems.length} packing)`],
-      ['Total Inventory Value', `LKR ${totalValue.toLocaleString()}`],
-      ['Low Stock Items', `${lowStockCount} items need reordering`],
+      ['Total Items', `${totalItems} (${items.length} inventory + ${packingItems.length} packing + ${kitchenItems.length} kitchen)`],
+      ['Inventory Value', `LKR ${computedInventoryValue.toLocaleString()}`],
+      ['Packing Value', `LKR ${computedPackingValue.toLocaleString()}`],
+      ['Kitchen Value', `LKR ${computedKitchenValue.toLocaleString()}`],
+      ['Overall Total Value', `LKR ${totalValue.toLocaleString()}`],
+      ['Low Stock (Inventory)', `${lowStockInventoryItems.length} items`],
+      ['Low Stock (Packing)', `${lowStockPackingItems.length} items`],
+      ['Low Stock (Kitchen)', `${lowStockKitchenItems.length} items`],
+      ['Low Stock (All)', `${lowStockCount} items need reordering`],
       ['Near Expiry Batches', `${nearExpiryCount} batches expiring soon`],
       ['Expired Batches', `${expiredCount} batches expired`],
       ['Last Updated', new Date().toLocaleString('en-GB')]
@@ -245,6 +268,58 @@ export class InventoryPDFGenerator {
   }
 
   /**
+   * Add kitchen items section
+   */
+  addKitchenItemsSection(kitchenItems) {
+    if (!kitchenItems || kitchenItems.length === 0) return;
+
+    this.checkAndAddPage(30);
+    this.doc.setFontSize(16);
+    this.doc.setFont('helvetica', 'bold');
+    this.doc.text('Kitchen Items Detailed List', 15, this.yPosition);
+    this.yPosition += 10;
+
+    const kitchenTableData = kitchenItems.map(item => {
+      const displayVariant = item.variant || item.description || 'N/A';
+      const displayColor = item.handleColor || item.color || 'N/A';
+      const unit = item.unit || 'pcs';
+
+      return [
+        item.name,
+        displayVariant,
+        item.size || 'N/A',
+        displayColor,
+        item.location || 'N/A',
+        `${formatQuantity(item.quantity)} ${unit}`,
+        `LKR ${formatPrice(item.price)}`,
+        `LKR ${formatPrice(item.quantity * item.price)}`
+      ];
+    });
+
+    autoTable(this.doc, {
+      startY: this.yPosition,
+      head: [['Item Name', 'Variant', 'Size', 'Color', 'Location', 'Count', 'Unit Price', 'Total Value']],
+      body: kitchenTableData,
+      margin: { left: 15, right: 15 },
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: { fillColor: [52, 152, 219], textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 28, fontStyle: 'bold' },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 16, halign: 'center' },
+        3: { cellWidth: 16, halign: 'center' },
+        4: { cellWidth: 22 },
+        5: { cellWidth: 18, halign: 'center' },
+        6: { cellWidth: 22, halign: 'right' },
+        7: { cellWidth: 23, halign: 'right' }
+      },
+      didDrawPage: (data) => {
+        this.yPosition = data.cursor.y + 15;
+      }
+    });
+  }
+
+  /**
    * Add low stock alerts section
    */
   addLowStockAlertsSection(lowStockItems) {
@@ -401,6 +476,7 @@ export class InventoryPDFGenerator {
       this.addExecutiveSummary(inventoryData);
       this.addInventoryItemsSection(inventoryData.items);
       this.addPackingItemsSection(inventoryData.packingItems);
+      this.addKitchenItemsSection(inventoryData.kitchenItems);
       this.addLowStockAlertsSection(inventoryData.lowStockItems);
       this.addBatchExpirySection({
         expiredBatches: inventoryData.expiredBatches,
