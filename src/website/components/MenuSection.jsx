@@ -1,492 +1,248 @@
-import { useState, useEffect } from "react";
-import { Plus, Star, Flame, Award, ChefHat, X, Eye } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import api from "../../inventory/services/api";
 import { getImageUrlWithFallback } from "../../utils/imageUtils";
+import CategoryTabs from "./CategoryTabs";
+import MenuGrid from "./MenuGrid";
+import QuickViewModal from "./QuickViewModal";
+import FloatingCartWidget from "./FloatingCartWidget";
 
-// Static fallback data in case API fails
-const fallbackMenuItems = [
-  { 
-    id: "1",
-    name: "Sunflower Rye Sourdough Black Bread",
-    description: "Sunflower Rye Sourdough, cherished in Germany and Scandinavia, blends rye flour with sunflower seeds, creating a nutty, dense, and moist loaf.",
-    price: 18.99,
-    image: "/pic_1.jpg",
-    category: "Pastries and bakery",
-    popular: true,
-    traditional: true
-  },
-  {
-    id: "2", 
-    name: "Russian Black Bread",
-    description: "Russian Black Bread, crafted with rye, molasses, caraway, and fennel, offers a dense, chewy texture and timeless, hearty flavor.",
-    price: 16.99,
-    image: "/pic_2.jpg",
-    category: "Pastries and bakery",
-    spicy: true,
-    popular: true
-  },
-  {
-    id: "3",
-    name: "Rainbow Sugar Cookies",
-    description: "The Rainbow cake is a colourful pretty cake that resembling a rainbow is multi layeredand usually flavoured with vanilla.",
-    price: 22.99,
-    image: "/Pic_3.jpg",
-    category: "Pastries and bakery",
-    premium: true
-  },
-  {
-    id: "4",
-    name: "Hungarian Kalacs",
-    description: "Hungarian Kalacs is usually a braided dish consisting of a soft sweet brioche like bread made from enriched dough.",
-    price: 8.99,
-    image: "/Pic_4.jpg",
-    category: "Pastries and bakery",
-    traditional: true
-  },
-  {
-    id: "5",
-    name: "Langos Bread",
-    description: "Golden fried flatbread, brushed with garlic butter and topped with cheese or sour cream, Hungarian Lángos is indulgent street food bliss.",
-    price: 17.99,
-    image: "/Pic_5.jpg",
-    category: "Pastries and bakery",
-    spicy: true,
-    traditional: true
-  },
-  {
-    id: "6",
-    name: "Potato Bread",
-    description: "Soft, hearty potato bread with a rustic crust—moist, fluffy inside and perfect for pairing with soups, stews, or spreads.",
-    price: 12.99,
-    image: "/Pic_6.jpg",
-    category: "Pastries and bakery",
-    popular: true
-  },
-  {
-    id: "7",
-    name: "Russian Pirozhki",
-    description: "The Traditional Russian Pirozhki is a delicious comfort food that is made from leavened yest and filled with a variety of meat, fish, eggs, rice, cabbage or fruit.",
-    price: 15.99,
-    image: "/Pic_7.jpg",
-    category: "Pastries and bakery",
-    traditional: true
-  },
-  {
-    id: "8",
-    name: "Wheat Bread",
-    description: "The German style alkaline water whole wheat bread is unique among bread as it combines whole wheat and low fat texture making it a low calories food.",
-    price: 9.99,
-    image: "/Pic_8.jpg",
-    category: "Pastries and bakery",
-    premium: true
-  },
-    {
-    id: "9",
-    name: "Best Gluten-Free Bread",
-    description: "Best Gluten Free Bread is one of a kind that is a soft chewy open crumb bread that has a delicious caramelized crust.",
-    price: 9.99,
-    image: "/Pic_9.jpg",
-    category: "Pastries and bakery",
-    premium: true
-  },
-    {
-    id: "10",
-    name: "Hungarian Pogasca",
-    description: "Hungarian Pogácsa, soft biscuits flavored with cheese or bacon, grace gatherings from bars to boardrooms—beloved, versatile, and endlessly comforting.",
-    price: 9.99,
-    image: "/Pic_10.jpg",
-    category: "Pastries and bakery",
-    premium: true
-  },
- 
+const normalizeCategory = (value) => {
+  const normalized = (value ?? '').toString().trim();
+  return normalized || 'Other';
+};
+const MENU_API_TIMEOUT_MS = 8000;
 
-];
-
-const MenuSection = ({ onAddToCart }) => {
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [loadingItems, setLoadingItems] = useState({});
-  const [selectedImage, setSelectedImage] = useState(null);
+const MenuSection = ({
+  onAddToCart,
+  cartItems = [],
+  onOpenCart,
+  activeCategory: activeCategoryProp,
+  onCategoryChange,
+  showCategoryTabs = true,
+  onMenuItemsLoaded,
+}) => {
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [internalActiveCategory, setInternalActiveCategory] = useState("All");
+  const [isFiltering, setIsFiltering] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
+  const gridAnchorRef = useRef(null);
   const { toast } = useToast();
 
-  // Load menu items from API
+  const activeCategory = activeCategoryProp ?? internalActiveCategory;
+
+  const formatPrice = (price) => {
+    const numericPrice = Number(price) || 0;
+    return numericPrice.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+  };
+
   useEffect(() => {
+    let isMounted = true;
+
     const loadMenuItems = async () => {
       try {
-        setLoading(true);
-        const response = await api.get('/public/menu');
-        const items = response.data.map(item => ({
-          id: item._id,
-          name: item.name,
-          subname: item.subname || '', // Add subname support
-          description: item.description || '',
-          price: item.sellPrice || 0, // Use sellPrice as the display price
-          costPrice: item.totalCost || 0, // Keep cost price for reference
-          image: getImageUrlWithFallback(item.image),
-          category: item.category || 'Other',
-          portionSize: item.portionSize,
-          servings: item.servings,
-          isOutOfStock: item.isOutOfStock || false,
-          stockMessage: item.stockMessage || '',
-          // Map category to match the existing filter structure
-          categoryDisplay: mapCategoryForDisplay(item.category)
-        }));
-        setMenuItems(items.filter(item => item.price > 0)); // Only show items with sell price
-      } catch (error) {
-        console.error('Error loading menu items:', error);
-        // Use static fallback data if API fails
-        setMenuItems(fallbackMenuItems);
-        toast({
-          title: "Using demo menu",
-          description: "Connected to live menu database failed. Showing demo items.",
-          duration: 3000,
+        if (isMounted) {
+          setLoading(true);
+        }
+
+        const timeoutPromise = new Promise((_, reject) => {
+          const timeoutId = setTimeout(() => {
+            clearTimeout(timeoutId);
+            reject(new Error("Menu request timeout"));
+          }, MENU_API_TIMEOUT_MS);
         });
+
+        const response = await Promise.race([api.get("/public/menu"), timeoutPromise]);
+        const items = response.data
+          .map((item) => ({
+            id: item._id,
+            name: item.name,
+            subname: item.subname || "",
+            description: item.description || "",
+            price: item.sellPrice || 0,
+            image: getImageUrlWithFallback(item.image),
+            category: normalizeCategory(item.category),
+            categoryDisplay: normalizeCategory(item.category),
+            popular: item.popular || false,
+            traditional: item.traditional || false,
+            spicy: item.spicy || false,
+            premium: item.premium || false,
+            isOutOfStock: item.isOutOfStock || false,
+            stockMessage: item.stockMessage || "Out of stock",
+          }))
+          .filter((item) => item.price > 0);
+
+        if (isMounted) {
+          setMenuItems(items);
+          onMenuItemsLoaded?.(items);
+        }
+      } catch (error) {
+        console.error("Error loading menu items:", error);
+        if (isMounted) {
+          toast({
+            title: "Menu unavailable",
+            description: "Unable to load the menu right now. Please try again.",
+            duration: 2800,
+          });
+          setMenuItems([]);
+          onMenuItemsLoaded?.([]);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadMenuItems();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Map backend categories to display categories
-  const mapCategoryForDisplay = (category) => {
-    const categoryMap = {
-      'Main Dish': 'Mains',
-      'Beverage': 'Beverages',
-      'Bakery': 'Bakery',
-      'Side Dish': 'Sides',
-      'Other': 'Other',
-      'Pancakes - Savory': 'Pancakes - Savory',
-      'Pancakes - Sweets': 'Pancakes - Sweets'
-    };
-    return categoryMap[category] || category;
+  const categories = useMemo(() => {
+    const available = new Set(menuItems.map((item) => normalizeCategory(item.categoryDisplay || item.category)));
+    const ordered = [...available].sort((a, b) => a.localeCompare(b));
+    return ["All", ...ordered];
+  }, [menuItems]);
+
+  const filteredItems = useMemo(() => {
+    if (activeCategory === "All") {
+      return [...menuItems].sort((a, b) => {
+        const categoryA = normalizeCategory(a.categoryDisplay || a.category);
+        const categoryB = normalizeCategory(b.categoryDisplay || b.category);
+        if (categoryA !== categoryB) return categoryA.localeCompare(categoryB);
+        return (a.name || '').localeCompare(b.name || '');
+      });
+    }
+
+    const normalizedActive = normalizeCategory(activeCategory);
+    return menuItems.filter((item) => normalizeCategory(item.categoryDisplay || item.category) === normalizedActive);
+  }, [menuItems, activeCategory]);
+
+  const handleCategoryChange = (category) => {
+    if (category === activeCategory) return;
+
+    setIsFiltering(true);
+    setTimeout(() => {
+      if (typeof onCategoryChange === "function") {
+        onCategoryChange(category);
+      } else {
+        setInternalActiveCategory(category);
+      }
+      setIsFiltering(false);
+      gridAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 160);
   };
 
-  const categories = ["All", "Salads", "Soups", "Mains", "Pancakes - Savory", "Pancakes - Sweets", "Bakery", "Beverages"];
-  
-  // Define the order for displaying items when "All" is selected
-  const categoryOrder = ["Salads", "Soups", "Mains", "Pancakes - Savory", "Pancakes - Sweets", "Bakery", "Beverages"];
-  
-  const filteredItems = selectedCategory === "All" 
-    ? menuItems.sort((a, b) => {
-        const indexA = categoryOrder.indexOf(a.categoryDisplay);
-        const indexB = categoryOrder.indexOf(b.categoryDisplay);
-        // If category not found in order, put it at the end
-        const orderA = indexA === -1 ? categoryOrder.length : indexA;
-        const orderB = indexB === -1 ? categoryOrder.length : indexB;
-        return orderA - orderB;
-      })
-    : menuItems.filter(item => item.categoryDisplay === selectedCategory);
-
-  const handleAddToCart = async (item) => {
-    // Prevent adding out of stock items
+  const handleAddToCart = (item, quantity = 1) => {
     if (item.isOutOfStock) {
       toast({
-        title: "Item Unavailable",
-        description: `${item.name} is currently out of stock (below reorder level).`,
+        title: "Item unavailable",
+        description: `${item.name} is currently out of stock.`,
         variant: "destructive",
-        duration: 3000,
+        duration: 2500,
       });
       return;
     }
 
-    setLoadingItems(prev => ({ ...prev, [item.id]: true }));
-    
-    // Simulate loading for better UX
-    setTimeout(() => {
+    for (let count = 0; count < quantity; count += 1) {
       onAddToCart?.(item);
-      toast({
-        title: "Added to cart!",
-        description: `LKR ${item.price.toFixed(2)} - ${item.name} has been added to your order.`,
-        duration: 2000,
-      });
-      setLoadingItems(prev => ({ ...prev, [item.id]: false }));
-    }, 500);
+    }
+
+    toast({
+      title: "Added to cart",
+      description: `${quantity} × ${item.name}`,
+      duration: 2200,
+    });
+  };
+
+  const openQuickView = (item) => {
+    setSelectedItem(item);
+    setQuickViewOpen(true);
   };
 
   return (
-    <section id="menu" className="py-16 md:py-20 bg-gradient-dark">
-      <div className="container mx-auto px-4">
-        {/* Professional Dark Header */}
-        <div className="text-center mb-12 md:mb-16 animate-fade-in-up">
-<div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full mb-6 animate-float shadow-glow">
-  <img 
-    src="/Logo.png" 
-    alt="Logo" 
-    className="w-14 h-14 object-contain" 
-  />
-</div>
-          
-          <h2 className="text-section mb-4 text-white">
-            Our <span className="text-gradient-primary">Hungarian</span> Menu
+    <section id="menu" className="relative py-16 md:py-20 bg-background overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_10%,rgba(16,185,129,0.10),transparent_40%),radial-gradient(circle_at_85%_15%,rgba(16,185,129,0.08),transparent_36%),radial-gradient(circle_at_50%_100%,rgba(255,255,255,0.03),transparent_45%)]" />
+      <div className="absolute -inset-20 pointer-events-none bg-[radial-gradient(circle,rgba(0,0,0,0.24),transparent_68%)]" />
+
+      <div className="absolute top-20 left-[12%] w-2 h-2 rounded-full bg-emerald-300/30 animate-pulse" />
+      <div className="absolute top-44 right-[18%] w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse [animation-delay:300ms]" />
+      <div className="absolute bottom-24 left-[26%] w-2.5 h-2.5 rounded-full bg-emerald-400/20 animate-pulse [animation-delay:600ms]" />
+      <div className="absolute bottom-40 right-[28%] w-1.5 h-1.5 rounded-full bg-white/15 animate-pulse [animation-delay:900ms]" />
+
+      <div className="container mx-auto px-4 relative z-10">
+        <header className="text-center mb-10 md:mb-12">
+          <h2 className="text-3xl md:text-5xl font-bold text-foreground tracking-tight">
+            Our <span className="text-primary">Hungarian</span> Menu
           </h2>
-          
-          <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
-            Authentic Hungarian cuisine crafted with traditional recipes and the finest ingredients, 
-            bringing you the true taste of Budapest , Hungary.
+          <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
+            Discover signature dishes and artisan bakery selections in a premium modern food gallery.
           </p>
-          
-          <div className="flex items-center justify-center space-x-2 mt-6">
-            <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse-gentle"></div>
-            <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse-gentle animate-delay-100"></div>
-            <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse-gentle animate-delay-200"></div>
+          <div className="mt-5 inline-flex items-center gap-2 text-emerald-300/80">
+            <span className="w-10 h-px bg-emerald-400/30" />
+            <Sparkles className="w-4 h-4" />
+            <span className="w-10 h-px bg-emerald-400/30" />
           </div>
-        </div>
+        </header>
 
-        {/* Professional Dark Category Filter */}
-        <div className="flex flex-wrap justify-center gap-3 md:gap-4 mb-12 animate-fade-in-up animate-delay-200">
-          {categories.map((category) => (
-            <Button
-              key={category}
-              variant={selectedCategory === category ? "default" : "outline"}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-6 py-3 text-sm md:text-base font-medium transition-smooth hover-scale Rs. {
-                selectedCategory === category
-                  ? "btn-primary shadow-glow"
-                  : ""
-              }`}
-            >
-              {category}
-            </Button>
-          ))}
-        </div>
+        {showCategoryTabs ? (
+          <div className="rounded-2xl bg-card/50 backdrop-blur-xl border border-border/70 p-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] mb-8">
+            <CategoryTabs categories={categories} activeCategory={activeCategory} onCategoryChange={handleCategoryChange} />
+          </div>
+        ) : null}
 
-        {/* Loading State */}
+        <div ref={gridAnchorRef} className="scroll-mt-28" />
+
         {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
-              <p className="text-gray-400">Loading our delicious menu...</p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, index) => (
+              <div
+                key={index}
+                className="rounded-2xl bg-card/50 border border-border/70 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)] overflow-hidden"
+              >
+                <div className="h-64 animate-pulse bg-muted/30" />
+                <div className="p-4 space-y-3">
+                  <div className="h-4 w-2/3 animate-pulse bg-muted/30 rounded" />
+                  <div className="h-3 w-1/2 animate-pulse bg-muted/30 rounded" />
+                  <div className="h-10 animate-pulse bg-muted/30 rounded-xl" />
+                </div>
+              </div>
+            ))}
           </div>
+        ) : filteredItems.length ? (
+          <MenuGrid
+            items={filteredItems}
+            isFiltering={isFiltering}
+            onQuickView={openQuickView}
+            onAddToCart={handleAddToCart}
+            formatPrice={formatPrice}
+          />
         ) : (
-          <>
-            {/* Professional Dark Menu Grid */}
-            {filteredItems.length === 0 ? (
-              <div className="text-center py-20">
-                <p className="text-gray-400 text-lg">No menu items found for this category.</p>
-                <p className="text-gray-500 text-sm mt-2">Please check back later or select a different category.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-                {filteredItems.map((item, index) => (
-            <div 
-              key={item.id} 
-              className={`group animate-fade-in-up animate-delay-${Math.min(index * 100 + 100, 400)} transform transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl`}
-            >
-              {/* Seamless Card Container */}
-              <div className="bg-gradient-to-b from-neutral-800 to-neutral-900 rounded-2xl overflow-hidden shadow-xl border border-neutral-700/50 hover:border-red-500/30 transition-all duration-300">
-              {/* Professional Dark Image Container */}
-              <div className="relative overflow-hidden h-48 md:h-56 cursor-pointer group"
-                   onClick={() => setSelectedImage(item)}>
-                <img 
-                  src={item.image} 
-                  alt={item.name}
-                  className="w-full h-full object-cover transition-smooth group-hover:scale-110"
-                  onError={(e) => {
-                    // Fallback if image doesn't load
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                  }}
-                />
-                
-                {/* Fallback design if image fails */}
-                <div 
-                  className="w-full h-full bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800 items-center justify-center transition-smooth group-hover:scale-110 hidden"
-                >
-                  <div className="text-center p-8">
-                    <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-glow group-hover:shadow-red-500/50 transition-shadow">
-                      <span className="text-white text-2xl font-bold">
-                        {item.name.charAt(0)}
-                      </span>
-                    </div>
-                    <p className="text-gray-400 text-sm font-medium">
-                      Culinary Excellence
-                    </p>
-                  </div>
-                </div>
-
-                {/* Image overlay with view icon */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
-                    <Eye className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-                
-                {/* Professional Dark Badges */}
-                <div className="absolute top-3 left-3 flex flex-col space-y-2">
-                  {item.isOutOfStock && (
-                    <Badge className="bg-red-600 text-white border-0 shadow-md animate-pulse">
-                      <X className="w-3 h-3 mr-1" />
-                      {item.stockMessage}
-                    </Badge>
-                  )}
-                  {!item.isOutOfStock && item.popular && (
-                    <Badge className="badge-primary shadow-glow">
-                      <Star className="w-3 h-3 mr-1 fill-current" />
-                      Popular
-                    </Badge>
-                  )}
-                  {!item.isOutOfStock && item.traditional && (
-                    <Badge className="badge-secondary">
-                      <Award className="w-3 h-3 mr-1" />
-                      Traditional
-                    </Badge>
-                  )}
-                </div>
-                
-                <div className="absolute top-3 right-3 flex flex-col space-y-2">
-                  {item.spicy && (
-                    <Badge className="bg-red-500 text-white border-0 shadow-md">
-                      <Flame className="w-3 h-3 mr-1" />
-                      Spicy
-                    </Badge>
-                  )}
-                  {item.premium && (
-                    <Badge className="bg-yellow-600 text-white border-0 shadow-md">
-                      Premium
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              {/* Professional Dark Content - Seamless Design */}
-              <div className="p-6 bg-gradient-to-b from-neutral-900 to-neutral-950 rounded-b-2xl">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-bold text-white group-hover:text-red-400 transition-smooth">
-                      {item.name}
-                    </h3>
-                    {item.subname && (
-                      <p className="text-sm font-medium text-blue-400 mt-1 italic">
-                        {item.subname}
-                      </p>
-                    )}
-                  </div>
-                  <p className="text-xl font-bold text-red-400 ml-4">
-                    Rs. {item.price}
-                  </p>
-                </div>
-
-                <p className="text-gray-300 text-sm leading-relaxed mb-6 line-clamp-3">
-                  {item.description}
-                </p>
-{/*
-                <Button
-                  onClick={() => handleAddToCart(item)}
-                  disabled={loadingItems[item.id] || item.isOutOfStock}
-                  className={`w-full group transition-all duration-300 font-semibold ${
-                    item.isOutOfStock 
-                      ? 'bg-gray-700 text-gray-400 cursor-not-allowed opacity-50 hover:bg-gray-700' 
-                      : 'bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-red-500/30 hover:scale-[1.02]'
-                  }`}
-                >
-                  {item.isOutOfStock ? (
-                    <>
-                      <X className="w-4 h-4 mr-2" />
-                      Out of Stock
-                    </>
-                  ) : loadingItems[item.id] ? (
-                    <div className="flex items-center">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Adding...
-                    </div>
-                  ) : (
-                    <>
-                      <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform" />
-                      Add to Order
-                    </>
-                  )}
-                </Button>
-                */}
-              </div>
-              </div>
-            </div>
-                ))}
-              </div>
-            )}
-        </>
-        )}        {/* Professional Dark Call to Action */}
-        <div className="text-center mt-16 animate-fade-in-up animate-delay-400">
-          <div className="glass-card-light rounded-2xl p-8 max-w-2xl mx-auto border border-gray-700 hover-glow">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-red-600 rounded-full mb-4 shadow-glow">
-              <ChefHat className="w-6 h-6 text-white" />
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-4">
-              Hungry for more Hungarian flavors?
-            </h3>
-            <p className="text-gray-400 mb-6 leading-relaxed">
-              Our chefs are happy to prepare any dish according to your preferences or dietary requirements.
-              Ask about our daily specials and seasonal Hungarian delicacies!
-            </p>
-            <Button className="btn-secondary hover-scale hover-glow">
-              Speak to Our Chef
-            </Button>
+          <div className="text-center py-20 rounded-2xl bg-card/50 border border-border/70">
+            <p className="text-foreground/80 text-lg">No items available in this category yet.</p>
+            <p className="text-muted-foreground mt-1 text-sm">Try another category or check back shortly.</p>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Image Modal */}
-      {selectedImage && (
-        <div 
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setSelectedImage(null)}
-        >
-          <div 
-            className="relative max-w-4xl max-h-[90vh] bg-gray-900 rounded-2xl overflow-hidden shadow-2xl animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close button */}
-            <button
-              onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-            >
-              <X className="w-6 h-6" />
-            </button>
+      <QuickViewModal
+        item={selectedItem}
+        isOpen={quickViewOpen}
+        onClose={() => setQuickViewOpen(false)}
+        onAddToCart={handleAddToCart}
+        formatPrice={formatPrice}
+      />
 
-            {/* Image */}
-            <div className="relative">
-              <img 
-                src={selectedImage.image} 
-                alt={selectedImage.name}
-                className="w-full h-auto max-h-[70vh] object-cover"
-              />
-              
-              {/* Image info overlay */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold text-white mb-2">{selectedImage.name}</h3>
-                    {selectedImage.subname && (
-                      <p className="text-lg font-medium text-blue-400 mb-2 italic">{selectedImage.subname}</p>
-                    )}
-                    <p className="text-gray-300 text-sm max-w-2xl">{selectedImage.description}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-3xl font-bold text-white">Rs. {selectedImage.price}</p>
-                    <Button
-                      onClick={() => {
-                        handleAddToCart(selectedImage);
-                        setSelectedImage(null);
-                      }}
-                      className="btn-primary mt-2 hover-glow"
-                      disabled={loadingItems[selectedImage.id]}
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add to Order
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <FloatingCartWidget cartItems={cartItems} onOpenCart={onOpenCart} />
     </section>
   );
 };

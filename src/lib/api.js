@@ -32,10 +32,33 @@ export { api };
 */
 import axios from 'axios';
 
-// Use env variable instead of hardcoding
+const normalizeBaseUrl = (value) => {
+  if (!value) return '';
+  let url = value.toString().trim();
+
+  if (url.startsWith(':')) {
+    url = `http://localhost${url}`;
+  }
+  if (/^(localhost|127\.0\.0\.1):\d+/i.test(url)) {
+    url = `http://${url}`;
+  }
+
+  return url.replace(/\/+$/, '');
+};
+
+const rawBase =
+  import.meta.env.VITE_API_BASE ||
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:4000/api';
+
+let API_BASE = normalizeBaseUrl(rawBase);
+if (API_BASE && !API_BASE.endsWith('/api')) {
+  API_BASE = `${API_BASE}/api`;
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE, // comes from .env file
-  timeout: 10000,
+  baseURL: API_BASE,
+  timeout: 10000
 });
 
 // Add auth token to requests

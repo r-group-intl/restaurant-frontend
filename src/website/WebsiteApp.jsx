@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import HeroSection from './components/HeroSection';
+import CommitmentSection from './components/CommitmentSection';
+import CategoryCarouselSection from './components/CategoryCarouselSection';
+import SpecialOffersSection from './components/SpecialOffersSection';
 import MenuSection from './components/MenuSection';
 import RestaurantNavbar from './components/RestaurantNavbar';
 import RestaurantFooter from './components/RestaurantFooter';
 import ScrollToTop from './components/ScrollToTop';
 import CartModal from './components/CartModal';
 import TableSelection from './components/TableSelection';
+import api from '../inventory/services/api';
 import './index.css';
 
 function WebsiteApp() {
@@ -14,8 +18,34 @@ function WebsiteApp() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [tableNumber, setTableNumber] = useState(null);
   const [isTableLocked, setIsTableLocked] = useState(false);
+  const [websiteTheme, setWebsiteTheme] = useState('dark');
+  const [activeCategory, setActiveCategory] = useState('All');
+  const [publicMenuItems, setPublicMenuItems] = useState([]);
+  const [specialOffers, setSpecialOffers] = useState([]);
+  const [websiteCategories, setWebsiteCategories] = useState([]);
 
   useEffect(() => {
+    // Website-only theme (scoped wrapper) – does not affect inventory
+    const media = window.matchMedia?.('(prefers-color-scheme: light)');
+    const stored = localStorage.getItem('website_theme');
+    const initial = stored === 'light' || stored === 'dark'
+      ? stored
+      : (media?.matches ? 'light' : 'dark');
+    setWebsiteTheme(initial);
+
+    const onChange = (event) => {
+      // Respect system changes only when no explicit preference is stored
+      const saved = localStorage.getItem('website_theme');
+      if (saved === 'light' || saved === 'dark') return;
+      setWebsiteTheme(event.matches ? 'light' : 'dark');
+    };
+
+    if (media?.addEventListener) {
+      media.addEventListener('change', onChange);
+    } else if (media?.addListener) {
+      media.addListener(onChange);
+    }
+
     // Check URL for table parameter (QR code support)
     const urlParams = new URLSearchParams(window.location.search);
     const tableParam = urlParams.get('table');
@@ -54,7 +84,73 @@ function WebsiteApp() {
       setIsLoading(false);
     }, 1000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+
+      if (media?.removeEventListener) {
+        media.removeEventListener('change', onChange);
+      } else if (media?.removeListener) {
+        media.removeListener(onChange);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const OFFERS_API_TIMEOUT_MS = 7000;
+
+    const loadSpecialOffers = async () => {
+      try {
+        const timeoutPromise = new Promise((_, reject) => {
+          const timeoutId = setTimeout(() => {
+            clearTimeout(timeoutId);
+            reject(new Error('Special offers request timeout'));
+          }, OFFERS_API_TIMEOUT_MS);
+        });
+
+        const response = await Promise.race([api.get('/public/special-offers'), timeoutPromise]);
+        if (!isMounted) return;
+        setSpecialOffers(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        if (isMounted) {
+          setSpecialOffers([]);
+        }
+      }
+    };
+
+    loadSpecialOffers();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const CATEGORIES_API_TIMEOUT_MS = 7000;
+
+    const loadWebsiteCategories = async () => {
+      try {
+        const timeoutPromise = new Promise((_, reject) => {
+          const timeoutId = setTimeout(() => {
+            clearTimeout(timeoutId);
+            reject(new Error('Website categories request timeout'));
+          }, CATEGORIES_API_TIMEOUT_MS);
+        });
+
+        const response = await Promise.race([api.get('/public/website-categories'), timeoutPromise]);
+        if (!isMounted) return;
+        setWebsiteCategories(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        if (isMounted) {
+          setWebsiteCategories([]);
+        }
+      }
+    };
+
+    loadWebsiteCategories();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleAddToCart = (item) => {
@@ -102,13 +198,13 @@ function WebsiteApp() {
   // Show loading screen while initializing
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-600 via-white to-green-600 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-white border-t-red-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-800 text-lg font-medium">Welcome to Restaurants By Ronan...</p>
-          <p className="text-gray-600 text-sm mt-2">Setting up your dining experience</p>
+      <div className={`website-theme ${websiteTheme === 'light' ? 'light' : ''} min-h-screen bg-background flex items-center justify-center`}>
+        <div className="text-center px-6">
+          <div className="w-14 h-14 border-4 border-muted border-t-primary rounded-full animate-spin mx-auto mb-5"></div>
+          <p className="text-foreground text-lg font-semibold">Restaurants By Ronan</p>
+          <p className="text-muted-foreground text-sm mt-2">Preparing your dining experience…</p>
           {tableNumber && (
-            <p className="text-red-600 text-sm mt-1">Table {tableNumber}</p>
+            <p className="text-primary text-sm mt-1">Table {tableNumber}</p>
           )}
         </div>
       </div>
@@ -116,7 +212,7 @@ function WebsiteApp() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`website-theme ${websiteTheme === 'light' ? 'light' : ''} min-h-screen bg-background text-foreground`}>
       <RestaurantNavbar 
         cartItems={cart} 
         onCartClick={() => setIsCartOpen(true)}
@@ -124,11 +220,30 @@ function WebsiteApp() {
         onTableChange={handleTableChange}
         isTableLocked={isTableLocked}
       />
-      <br />
-      <br />
-      <main>
+      <main className="pt-16 md:pt-20">
         <HeroSection tableNumber={tableNumber} />
-        <MenuSection onAddToCart={handleAddToCart} />
+        <CommitmentSection />
+        <SpecialOffersSection offers={specialOffers} />
+        <CategoryCarouselSection
+          categories={websiteCategories}
+          menuItems={publicMenuItems}
+          activeCategory={activeCategory}
+          onSelectCategory={(category) => {
+            setActiveCategory(category);
+            setTimeout(() => {
+              document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+          }}
+        />
+        <MenuSection
+          onAddToCart={handleAddToCart}
+          cartItems={cart}
+          onOpenCart={() => setIsCartOpen(true)}
+          activeCategory={activeCategory}
+          onCategoryChange={setActiveCategory}
+          showCategoryTabs={false}
+          onMenuItemsLoaded={setPublicMenuItems}
+        />
       </main>
       
       <RestaurantFooter />

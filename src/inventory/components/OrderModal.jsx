@@ -134,11 +134,17 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'di
       return;
     }
 
-    // Check if inventory is available
+    // Show warning if inventory is insufficient but allow order placement
     if (inventoryCheck && !inventoryCheck.canFulfillOrder) {
-      toast.error('Some items are out of stock. Please check inventory details.');
-      setShowInventoryDetails(true);
-      return;
+      toast('⚠️ Warning: Some items may have low inventory. Order will be placed.', {
+        icon: '📦',
+        duration: 5000,
+        style: {
+          borderRadius: '10px',
+          background: '#92400e',
+          color: '#fff',
+        },
+      });
     }
 
     // Prepare order data with customer details
@@ -319,7 +325,7 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'di
                 <div className={`mb-4 p-3 rounded text-xs ${
                   inventoryCheck.canFulfillOrder 
                     ? 'bg-green-900/50 border border-green-500 text-green-300'
-                    : 'bg-red-900/50 border border-red-500 text-red-300'
+                    : 'bg-amber-900/50 border border-amber-500 text-amber-300'
                 }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
@@ -331,13 +337,13 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'di
                       <span>
                         {inventoryCheck.canFulfillOrder 
                           ? 'All items available' 
-                          : `${inventoryCheck.unavailableItems} item(s) out of stock`}
+                          : `⚠️ ${inventoryCheck.unavailableItems} item(s) low inventory - Order can still be placed`}
                       </span>
                     </div>
                     {!inventoryCheck.canFulfillOrder && (
                       <button
                         onClick={() => setShowInventoryDetails(!showInventoryDetails)}
-                        className="text-red-400 hover:text-red-300 underline text-xs"
+                        className="text-amber-400 hover:text-amber-300 underline text-xs"
                       >
                         {showInventoryDetails ? 'Hide' : 'Details'}
                       </button>
@@ -348,18 +354,29 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'di
                   {showInventoryDetails && !inventoryCheck.canFulfillOrder && (
                     <div className="mt-2 space-y-1 text-xs">
                       {inventoryCheck.outOfStockItems?.map((item, idx) => (
-                        <div key={idx} className="bg-red-800/30 p-2 rounded">
+                        <div key={idx} className="bg-amber-800/30 p-2 rounded">
                           <div className="font-medium">{item.menuItemName}</div>
-                          <div className="text-red-400">
-                            Missing ingredients:
+                          <div className="text-amber-400">
+                            Unavailable items:
                           </div>
                           {item.unavailableIngredients?.map((ing, ingIdx) => (
-                            <div key={ingIdx} className="ml-2 text-red-300">
-                              • {ing.itemName}: Need {ing.needed}{ing.unit}, have {ing.available}{ing.unit}
+                            <div key={ingIdx} className="ml-2 text-amber-300">
+                              • {ing.message || `${ing.itemName}: Need ${ing.needed}${ing.unit}, have ${ing.available}${ing.unit}`}
                             </div>
                           ))}
                         </div>
                       ))}
+                      
+                      {/* Show additional insufficient details if available */}
+                      {inventoryCheck.insufficientDetails?.length > 0 && (
+                        <div className="mt-2 bg-yellow-900/30 p-2 rounded">
+                          <div className="text-yellow-400 text-xs">
+                            {inventoryCheck.insufficientDetails.map((msg, idx) => (
+                              <div key={idx}>• {msg}</div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -467,15 +484,17 @@ const OrderModal = ({ isOpen, onClose, onSubmit, menuItems = [], orderType = 'di
     {/* Submit Button */}
     <button
       onClick={handleSubmit}
-      disabled={inventoryCheck && !inventoryCheck.canFulfillOrder}
+      disabled={selectedItems.length === 0}
       className={`w-full py-2.5 rounded-md font-medium transition-colors text-sm ${
-        inventoryCheck && !inventoryCheck.canFulfillOrder
-          ? 'bg-red-600/50 text-red-300 cursor-not-allowed'
+        selectedItems.length === 0
+          ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
+          : inventoryCheck && !inventoryCheck.canFulfillOrder
+          ? 'bg-amber-600 text-white hover:bg-amber-700'
           : 'bg-blue-600 text-white hover:bg-blue-700'
       }`}
     >
       {inventoryCheck && !inventoryCheck.canFulfillOrder
-        ? 'Cannot Place Order - Out of Stock'
+        ? '⚠️ Place Order (Low Inventory)'
         : 'Place Order'}
     </button>
 

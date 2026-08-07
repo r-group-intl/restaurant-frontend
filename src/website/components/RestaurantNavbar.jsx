@@ -40,8 +40,8 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-smooth ${
       isScrolled 
-        ? 'bg-neutral-900 backdrop-blur-md border-b border-gray-800' 
-        : 'bg-black/30 backdrop-blur-md border-b border-gray-800/50'
+        ? 'bg-background/80 backdrop-blur-md border-b border-border' 
+        : 'bg-background/40 backdrop-blur-md border-b border-border/60'
     }`}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
@@ -54,13 +54,13 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
                 alt="WOW Restaurant Logo" 
                 className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover shadow-glow hover-scale transition-smooth"
               />
-              <div className="absolute -inset-1 bg-red-600/30 rounded-full blur-md -z-10 animate-pulse-gentle"></div>
+              <div className="absolute -inset-1 bg-primary/25 rounded-full blur-md -z-10 animate-pulse-gentle"></div>
             </div>
             <div className="hidden sm:block">
-              <h1 className="font-bold text-lg md:text-xl text-white">
+              <h1 className="font-bold text-lg md:text-xl text-foreground">
                 Restaurants By Ronan
               </h1>
-              <p className="text-xs text-red-400">
+              <p className="text-xs text-primary">
                 CRAVE INTERNATIONALLY ENJOY LOCALLY
                 
               </p>
@@ -73,7 +73,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
               variant="outline"
               size="sm"
               onClick={() => setShowTableDropdown(!showTableDropdown)}
-              className="flex items-center space-x-1 bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700/50 hover:border-red-500 transition-smooth"
+              className="flex items-center space-x-1 bg-card/60 border-border text-foreground hover:bg-card/80 hover:border-primary transition-smooth"
             >
               <Users className="w-3 h-3" />
               <span className="text-xs">{tableNumber ? `T${tableNumber}` : 'Table'}</span>
@@ -85,7 +85,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
           <div className="hidden md:flex items-center space-x-6">
             <button 
               onClick={() => scrollToSection('menu')}
-              className="font-medium text-gray-300 hover:text-red-400 transition-smooth hover-scale hover-glow"
+              className="font-medium text-muted-foreground hover:text-primary transition-smooth hover-scale hover-glow"
             >
               Menu
             </button>
@@ -97,7 +97,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
                 variant="outline"
                 size="sm"
                 onClick={() => setShowTableDropdown(!showTableDropdown)}
-                className={`flex items-center space-x-2 bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700/50 hover:border-red-500 shadow-glow transition-smooth hover-scale hover-glow ${
+                className={`flex items-center space-x-2 bg-card/60 border-border text-foreground hover:bg-card/80 hover:border-primary shadow-glow transition-smooth hover-scale hover-glow ${
                   isTableLocked ? 'border-orange-500' : ''
                 }`}
               >
@@ -108,8 +108,8 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
               </Button>
 
               {showTableDropdown && (
-                <div className="absolute top-full mt-2 bg-gray-800/85 right-0 glass-card-dark rounded-2xl p-2 min-w-[200px] max-h-60 overflow-y-auto animate-scale-in shadow-glow border border-gray-700">
-                  <div className="text-sm font-semibold text-gray-300 px-3 py-2 border-b border-gray-700">
+                <div className="absolute top-full mt-2 right-0 rounded-2xl p-2 min-w-[200px] max-h-60 overflow-y-auto animate-scale-in shadow-glow border border-border bg-card/80 backdrop-blur-xl">
+                  <div className="text-sm font-semibold text-muted-foreground px-3 py-2 border-b border-border">
                     {isTableLocked ? '🔒 Table Locked (QR)' : 'Select Your Table'}
                   </div>
                   {isTableLocked ? (
@@ -128,8 +128,8 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
                           }}
                           className={`p-2 text-sm rounded-lg transition-all hover:scale-105 ${
                             tableNumber === num
-                              ? 'bg-red-600 text-white shadow-lg'
-                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                              ? 'bg-primary text-primary-foreground shadow-lg'
+                              : 'bg-muted/40 text-foreground hover:bg-muted/60'
                           }`}
                         >
                           {num}
@@ -141,7 +141,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
               )}
             </div>
 
-            <div className="flex items-center space-x-1 text-sm text-gray-400 transition-smooth">
+            <div className="flex items-center space-x-1 text-sm text-muted-foreground transition-smooth">
               <Phone className="w-4 h-4" />
               <span>+94 777 66 9191</span>
             </div>
@@ -152,7 +152,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
                 variant="outline"
                 size="sm"
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center space-x-2 bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700/50 hover:border-blue-500 transition-all"
+                className="flex items-center space-x-2 bg-card/60 border-border text-foreground hover:bg-card/80 hover:border-blue-500 transition-all"
               >
                 <User className="w-4 h-4" />
                 <span className="hidden lg:inline">{user?.name}</span>
@@ -160,10 +160,10 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
               </Button>
 
               {showUserMenu && (
-                <div className="absolute top-full mt-2 right-0 bg-gray-800/95 backdrop-blur-md rounded-2xl p-2 min-w-[200px] shadow-2xl border border-gray-700 z-50">
-                  <div className="px-3 py-2 border-b border-gray-700">
-                    <div className="font-medium text-white">{user?.name}</div>
-                    <div className="text-sm text-gray-400">{user?.email}</div>
+                <div className="absolute top-full mt-2 right-0 bg-card/90 backdrop-blur-md rounded-2xl p-2 min-w-[200px] shadow-2xl border border-border z-50">
+                  <div className="px-3 py-2 border-b border-border">
+                    <div className="font-medium text-foreground">{user?.name}</div>
+                    <div className="text-sm text-muted-foreground">{user?.email}</div>
                     <div className="text-xs text-blue-400 mt-1">Role: {user?.role}</div>
                   </div>
                   <button
@@ -171,7 +171,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
                       logout();
                       setShowUserMenu(false);
                     }}
-                    className="w-full flex items-center space-x-2 px-3 py-2 text-red-400 hover:text-red-300 hover:bg-gray-700/50 rounded-lg transition-all"
+                    className="w-full flex items-center space-x-2 px-3 py-2 text-primary hover:text-primary/90 hover:bg-muted/40 rounded-lg transition-all"
                   >
                     <LogOut className="w-4 h-4" />
                     <span>Sign Out</span>
@@ -188,7 +188,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
               variant="outline"
               size="sm"
               onClick={onCartClick}
-              className="relative bg-gray-800/50 border-gray-600 text-white hover:bg-gray-700/50 hover:border-red-500 shadow-glow transition-smooth hover-scale hover-glow"
+              className="relative bg-card/60 border-border text-foreground hover:bg-card/80 hover:border-primary shadow-glow transition-smooth hover-scale hover-glow"
             >
               <ShoppingCart className="w-4 h-4 md:mr-2" />
               <span className="hidden md:inline">Cart</span>
@@ -204,7 +204,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
               variant="ghost"
               size="sm"
               onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden text-gray-300 hover:text-red-400 transition-smooth hover-scale"
+              className="md:hidden text-muted-foreground hover:text-primary transition-smooth hover-scale"
             >
               {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
@@ -213,11 +213,11 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
 
         {/* Professional Dark Mobile Menu */}
         {isOpen && (
-          <div className="md:hidden glass-card-dark rounded-2xl m-4 p-6 animate-slide-in-up border border-gray-700 shadow-glow">
+          <div className="md:hidden rounded-2xl m-4 p-6 animate-slide-in-up border border-border shadow-glow bg-card/80 backdrop-blur-xl">
             <div className="space-y-4">
               <button
                 onClick={() => scrollToSection('menu')}
-                className="block w-full text-left text-gray-300 hover:text-red-400 font-medium py-2 transition-smooth hover-glow"
+                className="block w-full text-left text-muted-foreground hover:text-primary font-medium py-2 transition-smooth hover-glow"
               >
                 Menu
               </button>
@@ -225,7 +225,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
               {/* Professional Dark Mobile Table Selection */}
               <div className="border-t border-gray-700 pt-4">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-gray-300 font-medium">Current Table:</span>
+                  <span className="text-muted-foreground font-medium">Current Table:</span>
                   {tableNumber ? (
                     <Badge className="badge-secondary">Table {tableNumber}</Badge>
                   ) : (
@@ -243,8 +243,8 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
                         }}
                         className={`p-2 text-sm rounded-xl transition-all hover:scale-105 ${
                           tableNumber === num
-                            ? 'bg-red-600 text-white shadow-lg'
-                            : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 hover:text-red-400'
+                            ? 'bg-primary text-primary-foreground shadow-lg'
+                            : 'bg-muted/40 text-foreground hover:bg-muted/60 hover:text-primary'
                         }`}
                       >
                         {num}
@@ -258,7 +258,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
                       setShowTableDropdown(true);
                       setIsOpen(false);
                     }}
-                    className="w-full mt-2 text-sm text-red-400 hover:text-red-300 transition-smooth"
+                    className="w-full mt-2 text-sm text-primary hover:text-primary/90 transition-smooth"
                   >
                     More tables (16-20)...
                   </button>
@@ -270,13 +270,13 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
                 )}
               </div>
 
-              <div className="border-t border-gray-700 pt-4 space-y-3">
-                <div className="flex items-center space-x-2 text-gray-400">
-                  <MapPin className="w-4 h-4 text-red-500" />
+              <div className="border-t border-border pt-4 space-y-3">
+                <div className="flex items-center space-x-2 text-muted-foreground">
+                  <MapPin className="w-4 h-4 text-primary" />
                   <span>Budapest, Hungary</span>
                 </div>
-                <div className="flex items-center space-x-2 text-gray-400">
-                  <Phone className="w-4 h-4 text-red-500" />
+                <div className="flex items-center space-x-2 text-muted-foreground">
+                  <Phone className="w-4 h-4 text-primary" />
                   <span>+94 1 234 5678</span>
                 </div>
               </div>
@@ -297,7 +297,7 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
                     logout();
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center space-x-2 px-3 py-2 text-red-400 hover:text-red-300 hover:bg-gray-700/50 rounded-lg transition-all"
+                  className="w-full flex items-center space-x-2 px-3 py-2 text-primary hover:text-primary/90 hover:bg-gray-700/50 rounded-lg transition-all"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>
@@ -322,8 +322,8 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
             className="fixed inset-0 z-40 bg-black/50" 
             onClick={() => setShowTableDropdown(false)}
           />
-          <div className="md:hidden fixed top-20 left-4 right-4 z-50 bg-neutral-900/85 glass-card-dark rounded-2xl p-4 animate-scale-in shadow-glow border border-gray-700">
-            <div className="text-sm font-semibold text-gray-300 px-3 py-2 border-b border-gray-700 mb-4">
+          <div className="md:hidden fixed top-20 left-4 right-4 z-50 rounded-2xl p-4 animate-scale-in shadow-glow border border-border bg-card/85 backdrop-blur-xl">
+            <div className="text-sm font-semibold text-muted-foreground px-3 py-2 border-b border-border mb-4">
               {isTableLocked ? '🔒 Table Locked (QR)' : 'Select Your Table'}
             </div>
             {isTableLocked ? (
@@ -339,8 +339,8 @@ const RestaurantNavbar = ({ cartItems = [], onCartClick, tableNumber, onTableCha
                     onClick={() => handleTableSelect(num)}
                     className={`p-3 text-sm rounded-xl transition-all hover:scale-105 ${
                       tableNumber === num
-                        ? 'bg-red-600 text-white shadow-lg'
-                        : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 hover:text-red-400'
+                        ? 'bg-primary text-primary-foreground shadow-lg'
+                        : 'bg-muted/40 text-foreground hover:bg-muted/60 hover:text-primary'
                     }`}
                   >
                     {num}

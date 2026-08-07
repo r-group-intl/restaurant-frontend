@@ -36,7 +36,7 @@ const TableSelection = ({ onTableSelect, currentTable, isLocked = false }) => {
     return (
       <div className="bg-gray-900/90 backdrop-blur-xl rounded-2xl p-6 border border-gray-700/50 shadow-2xl">
         <div className="text-center">
-          <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
             <Users className="w-8 h-8 text-white" />
           </div>
           <h3 className="text-2xl font-bold text-white mb-2">
@@ -55,7 +55,7 @@ const TableSelection = ({ onTableSelect, currentTable, isLocked = false }) => {
             <Button
               onClick={() => setShowSelection(true)}
               variant="outline"
-              className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:border-red-500 transition-all"
+              className="bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:border-primary transition-all"
             >
               Change Table
             </Button>
@@ -66,7 +66,7 @@ const TableSelection = ({ onTableSelect, currentTable, isLocked = false }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-red-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black flex items-center justify-center p-4">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <div className="absolute inset-0 bg-repeat" style={{
@@ -81,9 +81,9 @@ const TableSelection = ({ onTableSelect, currentTable, isLocked = false }) => {
             <img 
               src="/Logo W.png" 
               alt="Restaurant Logo" 
-              className="w-20 h-20 mx-auto rounded-full object-cover shadow-2xl border-4 border-red-500/30"
+              className="w-20 h-20 mx-auto rounded-full object-cover shadow-2xl border-4 border-primary/30"
             />
-            <div className="absolute -inset-1 bg-red-600/30 rounded-full blur-lg -z-10 animate-pulse"></div>
+            <div className="absolute -inset-1 bg-primary/25 rounded-full blur-lg -z-10 animate-pulse"></div>
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">
             Select Your Table
@@ -103,7 +103,7 @@ const TableSelection = ({ onTableSelect, currentTable, isLocked = false }) => {
                 className={`
                   relative p-4 rounded-2xl font-bold text-lg transition-all duration-200 transform hover:scale-105
                   ${selectedTable === number
-                    ? 'bg-red-600 text-white shadow-lg shadow-red-500/30 border-2 border-red-400'
+                    ? 'bg-primary text-primary-foreground shadow-lg border-2 border-primary'
                     : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 hover:text-white border-2 border-gray-600/50 hover:border-gray-500'
                   }
                 `}
@@ -126,7 +126,7 @@ const TableSelection = ({ onTableSelect, currentTable, isLocked = false }) => {
             <div className="text-center">
               <Button
                 onClick={confirmTableSelection}
-                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
+                className="w-full sm:w-auto px-8 py-4 btn-primary text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
               >
                 Confirm Table {selectedTable}
               </Button>
@@ -151,7 +151,7 @@ const TableSelection = ({ onTableSelect, currentTable, isLocked = false }) => {
             Having trouble? Scan the QR code on your table or ask our staff for assistance.
           </p>
           <p className="mt-2">
-            Contact us: <span className="text-red-400">+94 777 66 9191</span>
+            Contact us: <span className="text-primary">+94 777 66 9191</span>
           </p>
         </div>
       </div>

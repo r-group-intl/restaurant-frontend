@@ -42,6 +42,46 @@
       "icon": "WrenchScrewdriverIcon"
     },
     {
+      "key": "stockIssue",
+      "label": "Stock Issue",
+      "path": "stock-issue",
+      "tab": "operations",
+      "group": "Kitchen",
+      "icon": "CubeIcon"
+    },
+    {
+      "key": "stockIssueHistory",
+      "label": "Stock Issue History",
+      "path": "stock-issue-history",
+      "tab": "operations",
+      "group": "Kitchen",
+      "icon": "ClipboardDocumentListIcon"
+    },
+    {
+      "key": "kitchenInventory",
+      "label": "Kitchen Inventory",
+      "path": "kitchen-inventory",
+      "tab": "operations",
+      "group": "Kitchen",
+      "icon": "CubeIcon"
+    },
+    {
+      "key": "productionPlanning",
+      "label": "Production Planning",
+      "path": "production-planning",
+      "tab": "operations",
+      "group": "Kitchen",
+      "icon": "BeakerIcon"
+    },
+    {
+      "key": "bakeryProductionEntry",
+      "label": "Bakery Production",
+      "path": "bakery-production",
+      "tab": "operations",
+      "group": "Kitchen",
+      "icon": "BeakerIcon"
+    },
+    {
       "key": "cashierDashboard",
       "label": "Cashier Dashboard",
       "path": "cashier-dashboard",
@@ -230,6 +270,22 @@
       "tab": "admin",
       "group": "Administration",
       "icon": "HomeModernIcon"
+    },
+    {
+      "key": "websiteCategories",
+      "label": "Website Categories",
+      "path": "website-categories",
+      "tab": "admin",
+      "group": "Website",
+      "icon": "TagIcon"
+    },
+    {
+      "key": "specialOffers",
+      "label": "Special Offers",
+      "path": "special-offers",
+      "tab": "admin",
+      "group": "Website",
+      "icon": "BanknotesIcon"
     }
   ]
 }

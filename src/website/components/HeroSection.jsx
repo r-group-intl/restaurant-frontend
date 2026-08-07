@@ -1,21 +1,15 @@
 import { useState, useEffect } from "react";
-import { 
-  Star, Truck, Car , Bike
-} from "lucide-react";
+import { ArrowDown, Bike, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
-// ✅ Import your images from public folder
-const hero1 = "/hero/hero1.png";
-const hero2 = "/hero/hero2.png";
-const hero3 = "/hero/hero3.png";
-const hero4 = "/hero/hero4.png";
 const BG = "/hero/BG_2.png";
 const flower = "/hero/flower.png";
 const flower2 = "/hero/flower2.png";
+const HERO_VIDEO = "/Cinematic_Food_Commercial.mp4";
 
 const HeroSection = ({ onViewMenu, tableNumber, onReserveTable }) => {
   const [currentImage, setCurrentImage] = useState(0);
+  const [videoError, setVideoError] = useState(false);
 
   // ✅ Put all hero images into array
   const images = [BG]; 
@@ -33,127 +27,127 @@ const HeroSection = ({ onViewMenu, tableNumber, onReserveTable }) => {
     onViewMenu?.();
   };
 
-  const socials = [
-    {
-      image: hero1,
-
-      link: "https://www.instagram.com/",
-    },
-    {
-      image: hero2,
-  
-      link: "https://www.facebook.com/WOWRestaurant",
-    },
-    {
-      image: hero3,
-  
-      link: "https://www.tiktok.com/",
-    },
-    {
-      image: hero4,
-   
-      link: "#menu",
-    },
-  ];
-
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image with Overlay */}
-      <div className="absolute inset-0 transition-all duration-1000 ease-in-out">
-        {images.map((img, index) => (
+    <section className="relative min-h-[calc(100vh-4rem)] md:min-h-[calc(100vh-5rem)] flex items-center overflow-hidden">
+      {/* Background (video first, fallback image if video fails) */}
+      <div className="absolute inset-0">
+        {!videoError ? (
+          <video
+            className="absolute inset-0 w-full h-full object-cover"
+            src={HERO_VIDEO}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster={BG}
+            onError={() => setVideoError(true)}
+            aria-hidden="true"
+          />
+        ) : (
           <div
-            key={index}
-            className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ${
-              index === currentImage ? "opacity-100" : "opacity-0"
-            }`}
-            style={{ backgroundImage: `url(${img})` }}
-          >
-            {/* Dark overlay for better text readability */}
-          </div>
-        ))}
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${images[currentImage]})` }}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Overlays to ensure text readability */}
+        <div className="absolute inset-0 bg-black/55"></div>
+        <div className="absolute inset-0 bg-gradient-hero opacity-70"></div>
       </div>
 
+      {/* Ambient overlays (no new colors; uses theme primitives) */}
+      <div className="absolute inset-0 hero-noise pointer-events-none"></div>
+      <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary/20 blur-3xl animate-pulse-gentle"></div>
+      <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-primary/10 blur-3xl animate-pulse-gentle"></div>
+
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-12 text-center text-white">
-        <div className="max-w-5xl mx-auto space-y-8">
-          {/* Badge */}
-<img
-  src={flower2}
-  alt="Flower"
-  className="w-full max-w-[25rem] sm:max-w-[25rem] md:max-w-[25rem] h-auto object-contain mx-auto mb-4"
-/>
+      <div className="relative z-10 container mx-auto px-4">
+        <div className="grid gap-8 items-center">
+          {/* Brand */}
+          <div className="text-center lg:text-left">
+            <div className="inline-flex items-center justify-center lg:justify-start mb-6 animate-fade-in-up">
+              <img
+                src={flower2}
+                alt="Decor"
+                className="w-full max-w-[22rem] sm:max-w-[24rem] h-auto object-contain"
+              />
+            </div>
 
-{/* Brand */}
-<div className="animate-slide-in-left space-y-2 sm:space-y-3">
-  <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold leading-tight tracking-tight mb-2">
-    <span className="text-white drop-shadow-2xl">Restaurants</span>
-    <br />
-    <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-red-500 to-red-400 drop-shadow-2xl">
-      By Ronan
-    </span>
-  </h1>
+            <div className="animate-slide-in-left">
+              <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-7xl xl:text-8xl font-bold leading-[0.95] tracking-tight">
+                <span className="text-white drop-shadow-2xl">Restaurants</span>
+                <br />
+                <span className="text-gradient-primary text-shimmer">By Ronan</span>
+              </h1>
 
-  <img
-    src={flower}
-    alt="Flower"
-    className="w-full max-w-[25rem] sm:max-w-[25rem] md:max-w-[25rem] h-auto object-contain mx-auto mt-2"
-  />
-
-            <p className="text-xs sm:text-sm md:text-base text-gray-300 max-w-xl sm:max-w-2xl mx-auto text-center leading-relaxed font-light py-1">
-              Experience the rich flavors of Hungary with our traditional dishes,
-              crafted with authentic recipes passed down through generations.
-            </p>
-          </div>
-
-          {/* Socials */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-1 max-w-2xl mx-auto px-2 sm:px-2 animate-fade-in-up animate-delay-200">
-            {socials.map((social, index) => (
-              <div
-                key={index}
-                className="cursor-pointer"
-                onClick={() => {
-                  if (social.link.startsWith("#")) {
-                    document
-                      .getElementById(social.link.substring(1))
-                      ?.scrollIntoView({ behavior: "smooth" });
-                  } else {
-                    window.open(social.link, "_blank");
-                  }
-                }}
-              >
-                <div className="rounded-xl overflow-hidden">
-                  <img
-                    src={social.image}
-                    alt={social.value}
-                    className="w-full h-28 sm:h-36 object-cover rounded-xl"
-                  />
-                </div>
-                <h3 className="text-xs sm:text-sm md:text-base font-semibold text-white truncate px-1">
-                  {social.value}
-                </h3>
-                <p className="text-gray-400 text-[10px] sm:text-xs">{social.label}</p>
+              <div className="mt-4 flex items-center justify-center lg:justify-start">
+                <img
+                  src={flower}
+                  alt="Decor"
+                  className="w-full max-w-[18rem] sm:max-w-[22rem] h-auto object-contain opacity-95"
+                />
               </div>
-            ))}
-          </div>
 
-          {/* Delivery Service Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center pt-6 animate-fade-in-up animate-delay-400">
-            <Button 
-              onClick={() => window.open('https://www.ubereats.com', '_blank')}
-              size="sm"
-              className="w-full sm:w-auto bg-green-500 hover:bg-green-500 text-black border-0 px-6 sm:px-8 py-3 rounded-xl shadow-glow hover-scale transition-smooth group"
-            >
-              <Truck className="w-4 h-4 sm:w-5 sm:h-5 mr-2 group-hover:scale-110 transition-transform" />
-              Uber Eats
-            </Button>
-            <Button 
-              onClick={() => window.open('https://www.pickme.lk', '_blank')}
-              size="sm"
-              className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white border-0 px-6 sm:px-8 py-3 rounded-xl shadow-glow hover-scale transition-smooth group"
-            >
-              <Bike className="w-4 h-4 sm:w-5 sm:h-5 mr-2 group-hover:scale-110 transition-transform" />
-              PickMe
-            </Button>
+              <p className="mt-5 text-sm sm:text-base md:text-lg text-gray-200/80 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                Experience the rich flavors of Hungary with traditional dishes crafted from authentic recipes —
+                designed for modern dining.
+              </p>
+
+              <div className="mt-7 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start items-stretch sm:items-center">
+                <Button
+                  onClick={scrollToMenu}
+                  size="lg"
+                  className="btn-primary rounded-2xl group"
+                >
+                  View Menu
+                  <ArrowDown className="w-4 h-4 ml-2 group-hover:translate-y-0.5 transition-transform" />
+                </Button>
+                <Button
+                  onClick={() => onReserveTable?.()}
+                  size="lg"
+                  variant="outline"
+                  className="rounded-2xl bg-white/5 border-white/15 text-white hover:bg-white/10 transition-smooth"
+                >
+                  {tableNumber ? `Dining at Table ${tableNumber}` : "Select Table"}
+                </Button>
+              </div>
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start items-center">
+                <Button
+                  onClick={() => window.open("https://www.ubereats.com", "_blank")}
+                  size="sm"
+                  className="w-full sm:w-auto bg-white/10 hover:bg-white/15 text-white border border-white/10 px-6 py-3 rounded-2xl shadow-elegant transition-smooth group"
+                >
+                  <Truck className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                  Uber Eats
+                </Button>
+                <Button
+                  onClick={() => window.open("https://www.pickme.lk", "_blank")}
+                  size="sm"
+                  className="w-full sm:w-auto bg-white/10 hover:bg-white/15 text-white border border-white/10 px-6 py-3 rounded-2xl shadow-elegant transition-smooth group"
+                >
+                  <Bike className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                  PickMe
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 text-center lg:text-left">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-4 py-2 text-white/80 text-xs">
+            <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse-gentle"></span>
+            QR ordering supported • Fast kitchen workflow
+          </div>
+        </div>
+
+        {/* Scroll hint */}
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-6 hidden md:flex flex-col items-center gap-2 text-white/70">
+          <div className="text-xs tracking-widest">SCROLL</div>
+          <div className="w-[2px] h-10 bg-white/20 overflow-hidden rounded-full">
+            <div className="w-full h-1/2 bg-white/60 animate-scroll-indicator"></div>
           </div>
         </div>
       </div>

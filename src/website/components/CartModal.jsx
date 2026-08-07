@@ -64,11 +64,11 @@ const CartModal = ({ isOpen, onClose, cartItems, tableNumber, onUpdateQuantity, 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] shadow-2xl animate-scale-in flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in-up">
+      <div className="bg-card text-card-foreground rounded-2xl max-w-md w-full max-h-[90vh] shadow-elegant animate-scale-in flex flex-col overflow-hidden border border-white/10">
         
         {/* Clean Header */}
-        <div className="bg-gradient-to-r from-red-500 to-red-600 text-white p-5">
+        <div className="bg-gradient-primary text-primary-foreground p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <Receipt className="w-6 h-6" />
@@ -78,14 +78,14 @@ const CartModal = ({ isOpen, onClose, cartItems, tableNumber, onUpdateQuantity, 
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="text-white hover:bg-white/20 rounded-full transition-all"
+              className="text-white hover:bg-white/15 rounded-full transition-smooth"
             >
               <X className="w-5 h-5" />
             </Button>
           </div>
           
           {/* Table Info */}
-          <div className="bg-white/20 rounded-lg p-3 flex items-center justify-between">
+          <div className="bg-white/10 border border-white/15 rounded-xl p-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <MapPin className="w-4 h-4" />
               <span className="font-semibold">Table {tableNumber}</span>
@@ -98,23 +98,23 @@ const CartModal = ({ isOpen, onClose, cartItems, tableNumber, onUpdateQuantity, 
         </div>
 
         {/* Cart Items - More space allocated */}
-        <div className="flex-1 overflow-y-auto p-5 bg-gray-50 min-h-0">
+        <div className="flex-1 overflow-y-auto p-5 bg-background min-h-0">
           {cartItems.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Receipt className="w-8 h-8 text-gray-400" />
+              <div className="w-20 h-20 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Receipt className="w-8 h-8 text-muted-foreground" />
               </div>
-              <p className="text-gray-500 font-medium text-lg mb-2">Your cart is empty</p>
-              <p className="text-gray-400">Add some delicious items to get started</p>
+              <p className="text-foreground font-semibold text-lg mb-2">Your cart is empty</p>
+              <p className="text-muted-foreground">Add some delicious items to get started</p>
             </div>
           ) : (
             <div className="space-y-3">
               {cartItems.map((item) => (
-                <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                <div key={item.id} className="bg-card rounded-xl p-4 shadow-card border border-white/10 hover:border-white/15 transition-smooth">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
-                      <p className="text-red-600 font-medium">LKR {item.price.toFixed(2)}</p>
+                      <h3 className="font-semibold text-card-foreground mb-1">{item.name}</h3>
+                      <p className="text-primary font-semibold">LKR {item.price.toFixed(2)}</p>
                     </div>
                   </div>
                   
@@ -125,7 +125,7 @@ const CartModal = ({ isOpen, onClose, cartItems, tableNumber, onUpdateQuantity, 
                         variant="ghost"
                         size="sm"
                         onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                        className="w-8 h-8 p-0 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md"
+                        className="w-8 h-8 p-0 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-md"
                       >
                         <Minus className="w-4 h-4" />
                       </Button>
@@ -136,7 +136,7 @@ const CartModal = ({ isOpen, onClose, cartItems, tableNumber, onUpdateQuantity, 
                         variant="ghost"
                         size="sm"
                         onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                        className="w-8 h-8 p-0 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md"
+                        className="w-8 h-8 p-0 text-gray-600 hover:text-primary hover:bg-primary/10 rounded-md"
                       >
                         <Plus className="w-4 h-4" />
                       </Button>
@@ -185,7 +185,7 @@ const CartModal = ({ isOpen, onClose, cartItems, tableNumber, onUpdateQuantity, 
               <div className="border-t border-gray-300 pt-1">
                 <div className="flex justify-between font-bold text-gray-900">
                   <span>Total</span>
-                  <span className="text-red-600">LKR {total.toFixed(2)}</span>
+                  <span className="text-primary">LKR {total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -213,7 +213,7 @@ const CartModal = ({ isOpen, onClose, cartItems, tableNumber, onUpdateQuantity, 
                 Add More
               </Button>
               <Button
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 text-sm"
+                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 text-sm"
                 onClick={handlePlaceOrder}
                 disabled={isPlacing || cartItems.length === 0}
               >

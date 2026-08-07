@@ -127,7 +127,34 @@ const WaiterDashboard = () => {
         table: tableNumber
       };
 
-      await api.post('/orders', submissionData);
+      const response = await api.post('/orders', submissionData);
+      
+      // Non-blocking warnings (e.g., insufficient inventory)
+      if (Array.isArray(response.data?.warnings) && response.data.warnings.length > 0) {
+        for (const warning of response.data.warnings) {
+          if (warning.code === 'INVENTORY_INSUFFICIENT') {
+            toast(`⚠️ ${warning.message}\n${warning.details || ''}`, {
+              icon: '📦',
+              duration: 8000,
+              style: {
+                borderRadius: '10px',
+                background: '#92400e',
+                color: '#fff',
+              },
+            });
+          } else if (warning.code === 'INVENTORY_ERROR') {
+            toast(`⚠️ ${warning.message}`, {
+              icon: '⚠️',
+              duration: 6000,
+              style: {
+                borderRadius: '10px',
+                background: '#92400e',
+                color: '#fff',
+              },
+            });
+          }
+        }
+      }
       
       const orderTypeDisplay = customerDetails.orderType === 'dine-in' ? 'Dine-in' :
                               customerDetails.orderType === 'takeaway' ? 'Takeaway' :
@@ -150,25 +177,13 @@ const WaiterDashboard = () => {
     } catch (error) {
       console.error('Error placing order:', error);
       
-      // Handle inventory-specific errors
-      if (error.response?.data?.error === 'Out of Stock') {
-        toast.error(`Out of Stock: ${error.response.data.details}`, {
-          duration: 6000,
-          style: {
-            borderRadius: '10px',
-            background: '#7f1d1d',
-            color: '#fff',
-          },
-        });
-      } else {
-        toast.error(error.response?.data?.message || 'Failed to place order', {
-          style: {
-            borderRadius: '10px',
-            background: '#1f2937',
-            color: '#fff',
-          },
-        });
-      }
+      toast.error(error.response?.data?.message || 'Failed to place order', {
+        style: {
+          borderRadius: '10px',
+          background: '#1f2937',
+          color: '#fff',
+        },
+      });
     }
   };
 

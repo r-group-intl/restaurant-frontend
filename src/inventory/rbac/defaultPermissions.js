@@ -34,6 +34,9 @@ export const DEFAULT_PERMISSIONS = {
     transactions: { view: true, create: true, edit: true, approve: true, delete: true },
     reportsAnalytics: { view: true, create: false, edit: false, approve: false, delete: false },
     smsCampaigns: { view: true, create: true, edit: true, approve: true, delete: true }
+    ,
+    websiteCategories: { view: true, create: true, edit: true, approve: false, delete: true },
+    specialOffers: { view: true, create: true, edit: true, approve: false, delete: true }
   },
 
   // Kitchen: kitchen pages + Stock Requests + Wastage + Inventory view only.
@@ -43,6 +46,12 @@ export const DEFAULT_PERMISSIONS = {
     kitchenDashboard: { view: true, create: true, edit: true, approve: false, delete: false },
     kitchenOrders: { view: true, create: false, edit: true, approve: false, delete: false },
     kitchenUsage: { view: true, create: true, edit: true, approve: false, delete: false },
+
+    stockIssue: { view: true, create: true, edit: true, approve: false, delete: false },
+    stockIssueHistory: { view: true, create: false, edit: false, approve: false, delete: false },
+    kitchenInventory: { view: true, create: false, edit: false, approve: false, delete: false },
+    productionPlanning: { view: true, create: true, edit: true, approve: false, delete: false },
+    bakeryProductionEntry: { view: true, create: true, edit: true, approve: false, delete: false },
 
     inventory: { view: true, create: false, edit: false, approve: false, delete: false },
     stockRequests: { view: true, create: true, edit: true, approve: false, delete: false },
@@ -73,7 +82,6 @@ export const DEFAULT_PERMISSIONS = {
   // Legacy/unused role in some DBs; keep it locked down by default.
   staff: {}
 };
-
 export function normalizePermissions(permissionsByRole) {
   const normalized = { ...permissionsByRole };
   for (const role of Object.keys(normalized)) {

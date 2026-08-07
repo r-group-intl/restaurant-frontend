@@ -2,7 +2,19 @@ import axios from 'axios';
 
 const normalizeBaseUrl = (value) => {
   if (!value) return '';
-  return value.toString().trim().replace(/\/+$/, '');
+  let url = value.toString().trim();
+
+  // Common misconfig: ':4000' or ':4000/api' (missing protocol/host)
+  if (url.startsWith(':')) {
+    url = `http://localhost${url}`;
+  }
+
+  // Common misconfig: 'localhost:4000/api' or '127.0.0.1:4000/api'
+  if (/^(localhost|127\.0\.0\.1):\d+/i.test(url)) {
+    url = `http://${url}`;
+  }
+
+  return url.replace(/\/+$/, '');
 };
 
 const rawBase =

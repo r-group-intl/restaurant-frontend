@@ -36,6 +36,13 @@ import DeliveryHistoryPage from './pages/DeliveryHistoryPage';
 import PermissionsManagement from './pages/PermissionsManagement';
 import { PermissionsProvider } from './context/PermissionsContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import StockIssue from './pages/StockIssue';
+import ProductionPlanning from './pages/ProductionPlanning';
+import BakeryProductionEntry from './pages/BakeryProductionEntry';
+import StockIssueHistory from './pages/StockIssueHistory';
+import KitchenInventory from './pages/KitchenInventory';
+import WebsiteCategories from './pages/WebsiteCategories';
+import SpecialOffers from './pages/SpecialOffers';
 
 function InventoryToaster() {
   const { theme } = useTheme();
@@ -111,6 +118,17 @@ const ProtectedDeliveryHistory = withPermissionProtection(DeliveryHistoryPage, {
 // Admin: Access Control
 const ProtectedPermissionsManagement = withPermissionProtection(PermissionsManagement, { featureKey: 'accessControl', featureLabel: 'Access Control' });
 
+// New: multi-location stock flows
+const ProtectedStockIssue = withPermissionProtection(StockIssue, { featureKey: 'stockIssue', featureLabel: 'Stock Issue' });
+const ProtectedProductionPlanning = withPermissionProtection(ProductionPlanning, { featureKey: 'productionPlanning', featureLabel: 'Production Planning' });
+const ProtectedBakeryProductionEntry = withPermissionProtection(BakeryProductionEntry, { featureKey: 'bakeryProductionEntry', featureLabel: 'Bakery Production Entry' });
+const ProtectedStockIssueHistory = withPermissionProtection(StockIssueHistory, { featureKey: 'stockIssueHistory', featureLabel: 'Stock Issue History' });
+const ProtectedKitchenInventory = withPermissionProtection(KitchenInventory, { featureKey: 'kitchenInventory', featureLabel: 'Kitchen Inventory' });
+
+// Website content (customer-facing)
+const ProtectedWebsiteCategories = withPermissionProtection(WebsiteCategories, { featureKey: 'websiteCategories', featureLabel: 'Website Categories' });
+const ProtectedSpecialOffers = withPermissionProtection(SpecialOffers, { featureKey: 'specialOffers', featureLabel: 'Special Offers' });
+
 // Stock Requests + Usage
 const ProtectedStockRequests = withPermissionProtection(StockRequests, { featureKey: 'stockRequests', featureLabel: 'Stock Requests' });
 const ProtectedUsage = withPermissionProtection(Usage, { featureKey: 'kitchenUsage', featureLabel: 'Kitchen Usage' });
@@ -170,8 +188,17 @@ function InventoryApp() {
               <Route path="wastage-management" element={<ProtectedWastageManagement />} />
               <Route path="out-of-stock" element={<ProtectedOutOfStockManagement />} />
 
+              {/* Stock Issue & Production */}
+              <Route path="stock-issue" element={<ProtectedStockIssue />} />
+              <Route path="stock-issue-history" element={<ProtectedStockIssueHistory />} />
+              <Route path="kitchen-inventory" element={<ProtectedKitchenInventory />} />
+              <Route path="production-planning" element={<ProtectedProductionPlanning />} />
+              <Route path="bakery-production" element={<ProtectedBakeryProductionEntry />} />
+
               {/* Admin */}
               <Route path="permissions" element={<ProtectedPermissionsManagement />} />
+              <Route path="website-categories" element={<ProtectedWebsiteCategories />} />
+              <Route path="special-offers" element={<ProtectedSpecialOffers />} />
             </Route>
             <Route path="*" element={<div className="p-6">Not Found</div>} />
           </Routes>
