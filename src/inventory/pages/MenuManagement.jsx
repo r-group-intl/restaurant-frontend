@@ -191,6 +191,10 @@ export default function MenuManagement() {
   };
 
   const resetForm = () => {
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
     setFormData({
       name: '',
       subname: '',
@@ -236,26 +240,20 @@ export default function MenuManagement() {
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
-        alert('Please select an image file (JPEG, PNG, GIF, etc.)');
+        alert('Please select an image file (JPEG, PNG, GIF, WebP)');
         return;
       }
-      
-      // Validate file size (max 5MB)
+
       if (file.size > 5 * 1024 * 1024) {
         alert('Please select an image smaller than 5MB');
         return;
       }
 
       setSelectedFile(file);
-      
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPreviewUrl(e.target.result);
-      };
-      reader.readAsDataURL(file);
+
+      const blobUrl = URL.createObjectURL(file);
+      setPreviewUrl(blobUrl);
     }
   };
 
@@ -271,13 +269,14 @@ export default function MenuManagement() {
 
   // Upload image to server
   const uploadImage = async (file) => {
-    const formData = new FormData();
-    formData.append('image', file);
-    
+    const uploadFormData = new FormData();
+    uploadFormData.append('image', file);
+
     try {
-      const response = await api.post('/upload/image', formData, {
+      const response = await api.post('/upload/image', uploadFormData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      // Returns full HTTPS URL (Cloudinary) or relative path (/uploads/dish-xxx.jpg)
       return response.data.imageUrl;
     } catch (error) {
       console.error('Error uploading image:', error);
